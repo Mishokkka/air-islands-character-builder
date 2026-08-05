@@ -3,9 +3,9 @@
   "formatVersion": 1,
   "rulesVersion": "2026.08.05-1.2.0",
   "minimumBuilderVersion": "1.2.0",
-  "package": "air-islands-rules-2026.08.05-1.2.0-55932a27.flrules",
-  "packageSha256": "55932a27fe34202416a81117b802d4496fde57a0bbea4c668e5169c1e4be4ffb",
+  "package": "air-islands-rules-2026.08.05-1.2.0-27e40cdd.flrules",
+  "packageSha256": "27e40cdd6034c569099808f61984163f083134f63182bd940ba60f7c3df4eabe",
   "packageSize": 957860,
   "rulesPackageHash": "05e3ffe092db830608d17737454d5f4f9c81a5fd76698820b0da5cca8b032a8c",
-  "publishedAt": "2026-08-05T20:12:12.689Z"
+  "publishedAt": "2026-08-05T21:57:28.226Z"
 }

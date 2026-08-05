@@ -1,4 +1,4 @@
-const CACHE_NAME = "air-islands-character-builder-1.2.0";
+const CACHE_NAME = "air-islands-character-builder-1.2.1";
 const APP_SHELL = [
   "./",
   "./index.html",

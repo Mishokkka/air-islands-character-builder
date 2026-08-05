@@ -4,12 +4,12 @@
   const core = globalThis.AirIslandsCore;
   const zip = globalThis.AirIslandsZip;
   const appConfig = {
-    builderVersion: "1.2.0",
+    builderVersion: "1.2.1",
     rulesManifestUrl: "./rules/manifest.json",
     remoteCheckTimeoutMs: 8000,
     ...(globalThis.AIR_ISLANDS_CONFIG ?? {})
   };
-  const BUILDER_VERSION = String(appConfig.builderVersion || "1.2.0");
+  const BUILDER_VERSION = String(appConfig.builderVersion || "1.2.1");
   const RULES_DB_NAME = "air-islands-character-builder-rules";
   const RULES_DB_VERSION = 1;
   const RULES_PACKAGE_STORE = "packages";
@@ -704,7 +704,7 @@
     el.rulesStatus.classList.toggle("is-offline", ["cache", "embedded", "previous"].includes(rulesRuntimeState.source));
     el.rulesStatus.classList.toggle("is-current", ["remote", "cache-current"].includes(rulesRuntimeState.source) && !rulesRuntimeState.error);
     el.rulesStatus.title = rulesRuntimeState.error ? String(rulesRuntimeState.error.message ?? rulesRuntimeState.error) : "";
-    el.restorePreviousRules.disabled = !rulesRuntimeState.canRestore;
+    if (el.restorePreviousRules) el.restorePreviousRules.disabled = !rulesRuntimeState.canRestore;
   }
 
   async function applyRulesState(nextState, { notify = false } = {}) {
@@ -724,10 +724,13 @@
   }
 
   async function checkRemoteRules({ silent = false } = {}) {
-    if (!el.checkRulesUpdate || el.checkRulesUpdate.disabled) return;
-    const previousLabel = el.checkRulesUpdate.textContent;
-    el.checkRulesUpdate.disabled = true;
-    el.checkRulesUpdate.textContent = "Проверка…";
+    const button = el.checkRulesUpdate;
+    if (button?.disabled) return;
+    const previousLabel = button?.textContent ?? "";
+    if (button) {
+      button.disabled = true;
+      button.textContent = "Проверка…";
+    }
     try {
       const next = await fetchRemoteRulesPackage();
       const changed = next.rules.packageHash !== rules.packageHash;
@@ -743,8 +746,10 @@
       renderRulesStatus();
       if (!silent) alert(`Не удалось проверить обновления: ${error.message}`);
     } finally {
-      el.checkRulesUpdate.disabled = false;
-      el.checkRulesUpdate.textContent = previousLabel;
+      if (button) {
+        button.disabled = false;
+        button.textContent = previousLabel;
+      }
     }
   }
 
@@ -1195,9 +1200,9 @@
     el.saveDraft.addEventListener("click", () => downloadCharacter(false));
     el.exportCharacter.addEventListener("click", () => downloadCharacter(true));
     el.loadDraft.addEventListener("change", loadDraftFile);
-    el.loadRulesPackage.addEventListener("change", loadRulesFile);
-    el.checkRulesUpdate.addEventListener("click", () => checkRemoteRules());
-    el.restorePreviousRules.addEventListener("click", restorePreviousRulesVersion);
+    el.loadRulesPackage?.addEventListener("change", loadRulesFile);
+    el.checkRulesUpdate?.addEventListener("click", () => checkRemoteRules());
+    el.restorePreviousRules?.addEventListener("click", restorePreviousRulesVersion);
     el.validationState.addEventListener("click", event => {
       const button = event.target.closest("[data-issue-path]");
       if (button) focusIssue(button.dataset.issuePath);
