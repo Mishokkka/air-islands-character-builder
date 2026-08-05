@@ -1,0 +1,577 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://air-islands.local/schemas/flchar-v7.schema.json",
+  "title": "Air Islands Forbidden Lands Character v7",
+  "type": "object",
+  "required": [
+    "format",
+    "formatVersion",
+    "characterId",
+    "rulesVersion",
+    "rulesHash",
+    "identity",
+    "attributes",
+    "skills",
+    "creation",
+    "languages",
+    "reputation",
+    "experience",
+    "biography"
+  ],
+  "properties": {
+    "format": {
+      "const": "air-islands-character"
+    },
+    "formatVersion": {
+      "const": 7
+    },
+    "characterId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "rulesVersion": {
+      "type": "string",
+      "minLength": 1
+    },
+    "rulesHash": {
+      "type": "string",
+      "minLength": 1
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "identity": {
+      "type": "object",
+      "required": [
+        "name",
+        "kinId",
+        "professionId",
+        "originId",
+        "birthDate"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "kinId": {
+          "type": "string"
+        },
+        "kinVariantId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "kinFocus": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "professionId": {
+          "type": "string"
+        },
+        "originId": {
+          "type": "string"
+        },
+        "birthDate": {
+          "type": "object",
+          "required": [
+            "year",
+            "month",
+            "day"
+          ],
+          "properties": {
+            "year": {
+              "type": "integer"
+            },
+            "month": {
+              "type": "string",
+              "minLength": 1
+            },
+            "day": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 30
+            }
+          },
+          "additionalProperties": false
+        },
+        "originDetail": {
+          "type": "string"
+        },
+        "citizenship": {
+          "type": "string"
+        },
+        "religionId": {
+          "type": "string"
+        },
+        "religionDetail": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "attributes": {
+      "type": "object",
+      "required": [
+        "strength",
+        "agility",
+        "wits",
+        "empathy"
+      ],
+      "properties": {
+        "strength": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 6
+        },
+        "agility": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 6
+        },
+        "wits": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 6
+        },
+        "empathy": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 6
+        }
+      },
+      "additionalProperties": false
+    },
+    "skills": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "startingRank"
+        ],
+        "properties": {
+          "startingRank": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "creation": {
+      "type": "object",
+      "required": [
+        "initialPathCatalogId",
+        "ageTalentLedger",
+        "startingSpells"
+      ],
+      "properties": {
+        "initialPathCatalogId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ageTalentLedger": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "type",
+              "catalogId",
+              "toRank"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "type": {
+                "const": "talent"
+              },
+              "catalogId": {
+                "type": "string"
+              },
+              "toRank": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "startingSpells": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "languages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "languageId",
+          "level",
+          "native"
+        ],
+        "properties": {
+          "languageId": {
+            "type": "string"
+          },
+          "level": {
+            "enum": [
+              "basic",
+              "full",
+              "academic"
+            ]
+          },
+          "native": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "languageRolls": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "reputation": {
+      "type": "object",
+      "required": [
+        "entries"
+      ],
+      "properties": {
+        "entries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "amount",
+              "description",
+              "location"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "amount": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "description": {
+                "type": "string"
+              },
+              "location": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": true
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "experience": {
+      "type": "object",
+      "required": [
+        "baseTotal",
+        "ledger"
+      ],
+      "properties": {
+        "baseTotal": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "ledger": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "type": {
+                "enum": [
+                  "skill",
+                  "talent",
+                  "spell",
+                  "reputation"
+                ]
+              },
+              "skillId": {
+                "type": "string"
+              },
+              "catalogId": {
+                "type": "string"
+              },
+              "toRank": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5
+              },
+              "amount": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "additionalProperties": true
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "biography": {
+      "type": "object",
+      "required": [
+        "concept",
+        "appearance",
+        "background",
+        "family",
+        "pride",
+        "darkSecret",
+        "motivation",
+        "partyConnections",
+        "physical",
+        "questions",
+        "otherActiveCharacters",
+        "rumors"
+      ],
+      "properties": {
+        "concept": {
+          "type": "string"
+        },
+        "appearance": {
+          "type": "string"
+        },
+        "background": {
+          "type": "string"
+        },
+        "family": {
+          "type": "string"
+        },
+        "pride": {
+          "type": "string"
+        },
+        "darkSecret": {
+          "type": "string"
+        },
+        "motivation": {
+          "type": "string"
+        },
+        "partyConnections": {
+          "type": "string"
+        },
+        "physical": {
+          "type": "object",
+          "properties": {
+            "height": {
+              "type": "string"
+            },
+            "weight": {
+              "type": "string"
+            },
+            "skin": {
+              "type": "string"
+            },
+            "eyes": {
+              "type": "string"
+            },
+            "hair": {
+              "type": "string"
+            },
+            "distinguishingMarks": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "questions": {
+          "type": "object",
+          "properties": {
+            "bestFriend": {
+              "type": "string"
+            },
+            "favoriteFood": {
+              "type": "string"
+            },
+            "prejudices": {
+              "type": "string"
+            },
+            "aristocracy": {
+              "type": "string"
+            },
+            "favoriteMemory": {
+              "type": "string"
+            },
+            "oneWish": {
+              "type": "string"
+            },
+            "greatestFear": {
+              "type": "string"
+            },
+            "notes": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "otherActiveCharacters": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20
+        },
+        "rumors": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "text",
+              "truth"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
+              },
+              "truth": {
+                "enum": [
+                  "true",
+                  "false",
+                  "uncertain"
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "publicNote": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "equipmentRequest": {
+      "type": "string"
+    },
+    "gmRequests": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "category",
+          "description"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "category": {
+            "enum": [
+              "rule-exception",
+              "profession-skill",
+              "custom-talent",
+              "unusual-background",
+              "other"
+            ]
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "assets": {
+      "type": "object",
+      "properties": {
+        "portrait": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/asset"
+            }
+          ]
+        },
+        "token": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/asset"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "asset": {
+      "type": "object",
+      "required": [
+        "path",
+        "filename",
+        "mimeType",
+        "size"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "pattern": "^assets/"
+        },
+        "filename": {
+          "type": "string"
+        },
+        "originalName": {
+          "type": "string"
+        },
+        "mimeType": {
+          "enum": [
+            "image/png",
+            "image/webp",
+            "image/jpeg"
+          ]
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sha256": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

@@ -1,0 +1,193 @@
+{
+  "format": "air-islands-character",
+  "formatVersion": 7,
+  "rulesVersion": "2026.08.05-1.2.0",
+  "rulesHash": "05e3ffe092db830608d17737454d5f4f9c81a5fd76698820b0da5cca8b032a8c",
+  "characterId": "sample-character-1.0.5",
+  "createdAt": "2026-08-05T20:12:12.819Z",
+  "identity": {
+    "name": "Тестовый персонаж",
+    "kinId": "human",
+    "kinVariantId": "gvirl",
+    "kinFocus": "strength",
+    "professionId": "fighter",
+    "originId": "sirosten",
+    "originDetail": "Никерий",
+    "citizenship": "Сиростьен",
+    "religionId": "steel-faith",
+    "religionDetail": "Светское отношение к вере",
+    "birthDate": {
+      "year": 852,
+      "month": "hladohod",
+      "day": 1
+    }
+  },
+  "attributes": {
+    "strength": 4,
+    "agility": 4,
+    "wits": 3,
+    "empathy": 3
+  },
+  "skills": {
+    "might": {
+      "startingRank": 2
+    },
+    "endurance": {
+      "startingRank": 2
+    },
+    "melee": {
+      "startingRank": 3
+    },
+    "crafting": {
+      "startingRank": 2
+    },
+    "stealth": {
+      "startingRank": 0
+    },
+    "sleight-of-hand": {
+      "startingRank": 0
+    },
+    "move": {
+      "startingRank": 2
+    },
+    "marksmanship": {
+      "startingRank": 0
+    },
+    "scouting": {
+      "startingRank": 0
+    },
+    "lore": {
+      "startingRank": 0
+    },
+    "survival": {
+      "startingRank": 0
+    },
+    "insight": {
+      "startingRank": 0
+    },
+    "manipulation": {
+      "startingRank": 0
+    },
+    "performance": {
+      "startingRank": 0
+    },
+    "healing": {
+      "startingRank": 0
+    },
+    "animal-handling": {
+      "startingRank": 0
+    }
+  },
+  "creation": {
+    "initialPathCatalogId": "talent:world.talentscompendium:MUSaBt5v4cUISUMS",
+    "ageTalentLedger": [
+      {
+        "id": "age-brawler-1",
+        "type": "talent",
+        "catalogId": "talent:world.talentscompendium:LEN92iJ2ec1Dvnvr",
+        "toRank": 1
+      },
+      {
+        "id": "age-brawler-2",
+        "type": "talent",
+        "catalogId": "talent:world.talentscompendium:LEN92iJ2ec1Dvnvr",
+        "toRank": 2
+      }
+    ],
+    "startingSpells": []
+  },
+  "languages": [
+    {
+      "languageId": "damian",
+      "level": "basic",
+      "native": true
+    },
+    {
+      "languageId": "flech",
+      "level": "basic",
+      "native": false
+    }
+  ],
+  "languageRolls": [],
+  "reputation": {
+    "entries": [
+      {
+        "id": "rep-city-guard",
+        "amount": 1,
+        "description": "Известен как надёжный участник городской стражи.",
+        "location": "Никерий"
+      }
+    ]
+  },
+  "experience": {
+    "baseTotal": 125,
+    "ledger": [
+      {
+        "id": "xp-brawler-3",
+        "type": "talent",
+        "catalogId": "talent:world.talentscompendium:LEN92iJ2ec1Dvnvr",
+        "toRank": 3
+      },
+      {
+        "id": "xp-move-3",
+        "type": "skill",
+        "skillId": "move",
+        "toRank": 3
+      }
+    ]
+  },
+  "biography": {
+    "concept": "Бывший городской стражник, который ищет новую цель.",
+    "appearance": "Высокий человек в поношенном дорожном плаще.",
+    "background": "Родился в Сиростьене и несколько лет служил в городской страже.",
+    "family": "Поддерживает связь с младшей сестрой.",
+    "pride": "Я не бросаю тех, за кого отвечаю.",
+    "darkSecret": "Однажды скрыл преступление своего командира.",
+    "publicNote": "Сдержанный бывший стражник с короткой речью, прямой осанкой и привычкой внимательно осматривать двери и окна.",
+    "motivation": "Хочет исправить последствия своей старой ошибки.",
+    "partyConnections": "Готов защищать группу и выполнять тяжёлую работу.",
+    "physical": {
+      "height": "184 см",
+      "weight": "82 кг",
+      "skin": "Светлая",
+      "eyes": "Серые",
+      "hair": "Тёмные, коротко остриженные",
+      "distinguishingMarks": "Шрам у левого виска"
+    },
+    "questions": {
+      "bestFriend": "Старый напарник из городской стражи.",
+      "favoriteFood": "Густое мясное рагу, которое готовила мать.",
+      "prejudices": "Не доверяет людям, которые прикрываются чином.",
+      "aristocracy": "Считает титулы обязанностью, а не правом.",
+      "favoriteMemory": "Первое самостоятельно раскрытое дело.",
+      "oneWish": "Вернуть доброе имя своей семье.",
+      "greatestFear": "Снова промолчать, когда нужно действовать.",
+      "notes": "Говорит коротко и редко повышает голос."
+    },
+    "otherActiveCharacters": 2,
+    "rumors": [
+      {
+        "id": "rumor-true",
+        "text": "Он однажды спас целый караван.",
+        "truth": "true"
+      },
+      {
+        "id": "rumor-false",
+        "text": "Он продал товарища за серебро.",
+        "truth": "false"
+      }
+    ]
+  },
+  "equipmentRequest": "Старая сабля, плотный плащ и памятный жетон стражи.",
+  "gmRequests": [
+    {
+      "id": "request-background",
+      "category": "unusual-background",
+      "description": "Проверить, может ли бывшая служба дать знакомого в городской страже."
+    }
+  ],
+  "assets": {
+    "portrait": null,
+    "token": null
+  }
+}

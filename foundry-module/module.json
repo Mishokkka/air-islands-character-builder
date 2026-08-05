@@ -1,0 +1,41 @@
+{
+  "id": "air-islands-character-importer",
+  "title": "Air Islands Character Importer",
+  "description": "Импорт автономно созданных персонажей Воздушных Островов в Forbidden Lands. Совместимая кодовая база Foundry VTT 13/14.",
+  "version": "1.2.0",
+  "authors": [
+    {
+      "name": "Хозяин"
+    }
+  ],
+  "compatibility": {
+    "minimum": "13",
+    "verified": "13.351",
+    "maximum": "14"
+  },
+  "relationships": {
+    "systems": [
+      {
+        "id": "forbidden-lands",
+        "type": "system",
+        "compatibility": {
+          "minimum": "13.0.5",
+          "verified": "13.0.5"
+        }
+      }
+    ]
+  },
+  "esmodules": [
+    "scripts/main.mjs"
+  ],
+  "styles": [
+    "styles/importer.css"
+  ],
+  "languages": [
+    {
+      "lang": "ru",
+      "name": "Русский",
+      "path": "lang/ru.json"
+    }
+  ]
+}

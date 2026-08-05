@@ -1,0 +1,381 @@
+{
+  "folder": null,
+  "flags": {
+    "fbl-character-forge": {
+      "nameSet": "flechenrand",
+      "gender": "random",
+      "resolvedGender": null,
+      "resolvedNameSet": "flechenrand",
+      "artSet": "humanByCultureGender",
+      "artSubset": "general",
+      "portrait": null,
+      "token": null,
+      "createdViaApi": true,
+      "sourceModule": "fbl-character-forge",
+      "purpose": null,
+      "artError": null,
+      "assetUsage": null,
+      "generatedProfile": null
+    }
+  },
+  "name": "Пустой персонаж",
+  "type": "character",
+  "img": "systems/forbidden-lands/assets/fbl-character.webp",
+  "system": {
+    "attribute": {
+      "strength": {
+        "label": "ATTRIBUTE.STRENGTH",
+        "value": 0,
+        "min": 0,
+        "max": 0
+      },
+      "agility": {
+        "label": "ATTRIBUTE.AGILITY",
+        "value": 0,
+        "min": 0,
+        "max": 0
+      },
+      "wits": {
+        "label": "ATTRIBUTE.WITS",
+        "value": 0,
+        "min": 0,
+        "max": 0
+      },
+      "empathy": {
+        "label": "ATTRIBUTE.EMPATHY",
+        "value": 0,
+        "min": 0,
+        "max": 0
+      },
+      "health": {
+        "label": "ATTRIBUTE.HEALTH",
+        "value": 0,
+        "min": 0,
+        "max": 0
+      },
+      "resolve": {
+        "label": "ATTRIBUTE.RESOLVE",
+        "value": 0,
+        "min": 0,
+        "max": 0
+      }
+    },
+    "skill": {
+      "might": {
+        "label": "SKILL.MIGHT",
+        "value": 0,
+        "min": 0,
+        "attribute": "strength"
+      },
+      "endurance": {
+        "label": "SKILL.ENDURANCE",
+        "value": 0,
+        "min": 0,
+        "attribute": "strength"
+      },
+      "melee": {
+        "label": "SKILL.MELEE",
+        "value": 0,
+        "min": 0,
+        "attribute": "strength"
+      },
+      "crafting": {
+        "label": "SKILL.CRAFTING",
+        "value": 0,
+        "min": 0,
+        "attribute": "strength"
+      },
+      "stealth": {
+        "label": "SKILL.STEALTH",
+        "value": 0,
+        "min": 0,
+        "attribute": "agility"
+      },
+      "sleight-of-hand": {
+        "label": "SKILL.SLEIGHT_OF_HAND",
+        "value": 0,
+        "min": 0,
+        "attribute": "agility"
+      },
+      "move": {
+        "label": "SKILL.MOVE",
+        "value": 0,
+        "min": 0,
+        "attribute": "agility"
+      },
+      "marksmanship": {
+        "label": "SKILL.MARKSMANSHIP",
+        "value": 0,
+        "min": 0,
+        "attribute": "agility"
+      },
+      "scouting": {
+        "label": "SKILL.SCOUTING",
+        "value": 0,
+        "min": 0,
+        "attribute": "wits"
+      },
+      "lore": {
+        "label": "SKILL.LORE",
+        "value": 0,
+        "min": 0,
+        "attribute": "wits"
+      },
+      "survival": {
+        "label": "SKILL.SURVIVAL",
+        "value": 0,
+        "min": 0,
+        "attribute": "wits"
+      },
+      "insight": {
+        "label": "SKILL.INSIGHT",
+        "value": 0,
+        "min": 0,
+        "attribute": "wits"
+      },
+      "manipulation": {
+        "label": "SKILL.MANIPULATION",
+        "value": 0,
+        "min": 0,
+        "attribute": "empathy"
+      },
+      "performance": {
+        "label": "SKILL.PERFORMANCE",
+        "value": 0,
+        "min": 0,
+        "attribute": "empathy"
+      },
+      "healing": {
+        "label": "SKILL.HEALING",
+        "value": 0,
+        "min": 0,
+        "attribute": "empathy"
+      },
+      "animal-handling": {
+        "label": "SKILL.ANIMAL_HANDLING",
+        "value": 0,
+        "min": 0,
+        "attribute": "empathy"
+      }
+    },
+    "type": "",
+    "bio": {
+      "kin": {
+        "label": "BIO.KIN",
+        "value": ""
+      },
+      "profession": {
+        "label": "BIO.PROFESSION",
+        "value": ""
+      },
+      "pride": {
+        "label": "BIO.PRIDE",
+        "value": ""
+      },
+      "darkSecret": {
+        "label": "BIO.DARK_SECRET",
+        "value": ""
+      },
+      "age": {
+        "label": "BIO.AGE",
+        "value": 0
+      },
+      "reputation": {
+        "label": "BIO.REPUTATION",
+        "value": 0
+      },
+      "face": {
+        "label": "BIO.FACE",
+        "value": ""
+      },
+      "body": {
+        "label": "BIO.BODY",
+        "value": ""
+      },
+      "clothing": {
+        "label": "BIO.CLOTHING",
+        "value": ""
+      },
+      "note": {
+        "label": "BIO.NOTE",
+        "value": ""
+      },
+      "experience": {
+        "label": "BIO.EXPERIENCE",
+        "value": 0
+      },
+      "willpower": {
+        "label": "BIO.WILLPOWER",
+        "value": 0,
+        "min": 0,
+        "max": 10
+      }
+    },
+    "condition": {
+      "sleepy": {
+        "label": "CONDITION.SLEEPY",
+        "value": false
+      },
+      "thirsty": {
+        "label": "CONDITION.THIRSTY",
+        "value": false
+      },
+      "hungry": {
+        "label": "CONDITION.HUNGRY",
+        "value": false
+      },
+      "cold": {
+        "label": "CONDITION.COLD",
+        "value": false
+      }
+    },
+    "consumable": {
+      "food": {
+        "label": "CONSUMABLE.FOOD",
+        "value": 0
+      },
+      "water": {
+        "label": "CONSUMABLE.WATER",
+        "value": 0
+      },
+      "arrows": {
+        "label": "CONSUMABLE.ARROWS",
+        "value": 0
+      },
+      "torches": {
+        "label": "CONSUMABLE.TORCHES",
+        "value": 0
+      }
+    },
+    "currency": {
+      "gold": {
+        "label": "CURRENCY.GOLD",
+        "value": 0
+      },
+      "silver": {
+        "label": "CURRENCY.SILVER",
+        "value": 0
+      },
+      "copper": {
+        "label": "CURRENCY.COPPER",
+        "value": 0
+      }
+    }
+  },
+  "prototypeToken": {
+    "name": "Пустой персонаж",
+    "displayName": 20,
+    "actorLink": false,
+    "width": 1,
+    "height": 1,
+    "texture": {
+      "src": "systems/forbidden-lands/assets/fbl-character.webp",
+      "anchorX": 0.5,
+      "anchorY": 0.5,
+      "offsetX": 0,
+      "offsetY": 0,
+      "fit": "contain",
+      "scaleX": 1,
+      "scaleY": 1,
+      "rotation": 0,
+      "tint": "#ffffff",
+      "alphaThreshold": 0.75
+    },
+    "lockRotation": true,
+    "rotation": 0,
+    "alpha": 1,
+    "disposition": 0,
+    "displayBars": 0,
+    "bar1": {
+      "attribute": "attribute.strength"
+    },
+    "bar2": {
+      "attribute": "bio.willpower"
+    },
+    "light": {
+      "negative": false,
+      "priority": 0,
+      "alpha": 0.5,
+      "angle": 360,
+      "bright": 0,
+      "color": null,
+      "coloration": 1,
+      "dim": 0,
+      "attenuation": 0.5,
+      "luminosity": 0.5,
+      "saturation": 0,
+      "contrast": 0,
+      "shadows": 0,
+      "animation": {
+        "type": null,
+        "speed": 5,
+        "intensity": 5,
+        "reverse": false
+      },
+      "darkness": {
+        "min": 0,
+        "max": 1
+      }
+    },
+    "sight": {
+      "enabled": false,
+      "range": 0,
+      "angle": 360,
+      "visionMode": "basic",
+      "color": null,
+      "attenuation": 0.1,
+      "brightness": 0,
+      "saturation": 0,
+      "contrast": 0
+    },
+    "detectionModes": [],
+    "occludable": {
+      "radius": 0
+    },
+    "ring": {
+      "enabled": false,
+      "colors": {
+        "ring": null,
+        "background": null
+      },
+      "effects": 1,
+      "subject": {
+        "scale": 1,
+        "texture": null
+      }
+    },
+    "turnMarker": {
+      "mode": 1,
+      "animation": null,
+      "src": null,
+      "disposition": false
+    },
+    "movementAction": null,
+    "flags": {},
+    "randomImg": false,
+    "appendNumber": false,
+    "prependAdjective": false
+  },
+  "items": [],
+  "effects": [],
+  "_stats": {
+    "compendiumSource": null,
+    "duplicateSource": null,
+    "exportSource": {
+      "worldId": "forbidden-lands",
+      "uuid": "Actor.rZiLtIffkQ3y5LM7",
+      "coreVersion": "13.351",
+      "systemId": "forbidden-lands",
+      "systemVersion": "13.0.5"
+    },
+    "coreVersion": "13.351",
+    "systemId": "forbidden-lands",
+    "systemVersion": "13.0.5",
+    "createdTime": 1783840624726,
+    "modifiedTime": 1783840624726,
+    "lastModifiedBy": "FpC4FE0vSjtcXBMq"
+  },
+  "ownership": {
+    "default": 0
+  }
+}

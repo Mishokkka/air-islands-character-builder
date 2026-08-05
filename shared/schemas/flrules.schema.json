@@ -1,0 +1,231 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://air-islands.local/schemas/flrules.schema.json",
+  "title": "Air Islands Character Builder Rules Package",
+  "type": "object",
+  "required": [
+    "format",
+    "formatVersion",
+    "rulesVersion",
+    "target",
+    "campaignDate",
+    "calendar",
+    "ageCategories",
+    "kin",
+    "professions",
+    "skills",
+    "languages",
+    "origins",
+    "religions",
+    "builderSettings",
+    "catalogs",
+    "packageHash"
+  ],
+  "properties": {
+    "format": {
+      "const": "air-islands-rules"
+    },
+    "formatVersion": {
+      "const": 1
+    },
+    "rulesVersion": {
+      "type": "string",
+      "minLength": 1
+    },
+    "packageHash": {
+      "type": "string",
+      "minLength": 32
+    },
+    "target": {
+      "type": "object",
+      "required": [
+        "foundry",
+        "systemId",
+        "systemVersion"
+      ],
+      "properties": {
+        "foundry": {
+          "type": "string"
+        },
+        "systemId": {
+          "const": "forbidden-lands"
+        },
+        "systemVersion": {
+          "type": "string"
+        }
+      }
+    },
+    "campaignDate": {
+      "type": "object",
+      "required": [
+        "year",
+        "month",
+        "day"
+      ],
+      "properties": {
+        "year": {
+          "type": "integer"
+        },
+        "month": {
+          "type": "string"
+        },
+        "day": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30
+        }
+      }
+    },
+    "catalogs": {
+      "type": "object",
+      "required": [
+        "talents",
+        "spells"
+      ],
+      "properties": {
+        "talents": {
+          "type": "object",
+          "required": [
+            "items"
+          ]
+        },
+        "spells": {
+          "type": "object",
+          "required": [
+            "items"
+          ]
+        }
+      }
+    },
+    "origins": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "religions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "builderSettings": {
+      "type": "object",
+      "properties": {
+        "campaignTitle": {
+          "type": "string"
+        },
+        "introText": {
+          "type": "string"
+        },
+        "enabledKin": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "enabledProfessions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "enabledPathCatalogIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "hiddenTalentCatalogIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "hiddenSpellDisciplines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "maximumBaseXp": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "rumorCountMode": {
+          "enum": [
+            "party-size",
+            "fixed"
+          ]
+        },
+        "requiredRumorCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "requiredBiographyFields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "allowedImageTypes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "maxAssetSizeMb": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "additionalProperties": true
+    },
+    "startingSpellLimitByRank": {
+      "type": "object",
+      "patternProperties": {
+        "^[1-9][0-9]*$": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": true
+}
