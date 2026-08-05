@@ -73,8 +73,7 @@ try {
   });
   await new Promise(resolve => setTimeout(resolve, 800));
   if (errors.length) throw errors[0];
-  const status = dom.window.document.querySelector("#rulesStatusText")?.textContent ?? "";
-  if (!status.includes(rules.rulesVersion) || !status.includes("GitHub")) throw new Error(`Удалённые правила не были загружены: ${status}`);
+  if (dom.window.document.querySelector(".bootstrap-error")) throw new Error("Веб-конструктор не запустился с удалённым пакетом правил.");
   if (dom.window.document.querySelectorAll("#generalTalentCatalog .catalog-item").length < 70) throw new Error("Каталог не построен из удалённого пакета правил.");
   if (dom.window.AIR_ISLANDS_RULES) throw new Error("Тестовая веб-страница неожиданно использует встроенный rules.bundle.js.");
   console.log("Remote GitHub rules loading test passed.");

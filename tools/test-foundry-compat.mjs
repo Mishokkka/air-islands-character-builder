@@ -12,8 +12,13 @@ const importerCss = fs.readFileSync(path.join(root, "foundry-module/styles/impor
 
 assert.equal(manifest.compatibility.minimum, "13");
 assert.equal(manifest.compatibility.maximum, "14");
-assert.match(main, /getHeaderControlsActorDirectory/u);
-assert.match(main, /renderActorDirectory/u);
+assert.doesNotMatch(main, /getHeaderControlsActorDirectory/u);
+assert.doesNotMatch(main, /renderActorDirectory/u);
+assert.match(main, /game\.settings\.registerMenu\(MODULE_ID, "module-tools"/u);
+assert.match(main, /class ModuleToolsApplication extends foundry\.applications\.api\.ApplicationV2/u);
+assert.match(main, /data-aicb-tool="import"/u);
+assert.match(main, /data-aicb-tool="settings"/u);
+assert.match(main, /data-aicb-tool="export"/u);
 assert.match(main, /foundryGeneration\(\)/u);
 assert.match(main, /characterToActorData\(character, rules, \{ foundryGeneration:/u);
 assert.doesNotMatch(core, /offsetX\s*:/u);
@@ -63,6 +68,8 @@ assert.match(main, /Импортировать несмотря на ошибк�
 assert.match(core, /forcedImport/u);
 assert.match(core, /validationErrors/u);
 assert.match(importerCss, /\.aicb-force-notice/u);
+assert.match(importerCss, /\.aicb-module-tools-grid/u);
+assert.doesNotMatch(importerCss, /\.aicb-directory-button/u);
 assert.match(main, /hiddenTalentCatalogIds/u);
 assert.match(main, /hiddenSpellDisciplines/u);
 assert.match(main, /requiredBiographyFields/u);

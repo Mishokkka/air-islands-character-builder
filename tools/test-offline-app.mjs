@@ -56,8 +56,16 @@ try {
   if (dom.window.document.querySelectorAll("#wizardSteps .wizard-step").length !== 8) {
     throw new Error("Последовательный мастер не создал восемь этапов.");
   }
-  if (!dom.window.document.querySelector("#loadRulesPackage")) {
-    throw new Error("В шапке отсутствует загрузка экспортированного пакета .flrules.");
+  const headerControls = dom.window.document.querySelectorAll(".app-header .header-actions > button, .app-header .header-actions > .file-button");
+  if (headerControls.length !== 4
+    || !dom.window.document.querySelector("#saveDraft")
+    || !dom.window.document.querySelector("#loadDraft")
+    || !dom.window.document.querySelector("#resetDraft")
+    || !dom.window.document.querySelector("#exportCharacter")) {
+    throw new Error("В шапке должны остаться только сохранение, открытие .flchar, сброс и экспорт.");
+  }
+  if (dom.window.document.querySelector(".rules-runtime, #rulesStatus, #checkRulesUpdate, #restorePreviousRules, #loadRulesPackage")) {
+    throw new Error("Игрокам всё ещё показаны служебные элементы управления пакетами правил.");
   }
   if (dom.window.document.querySelectorAll("#identityLore .lore-card").length < 3) {
     throw new Error("Контекстные карточки расы, профессии, происхождения и веры не отрисованы.");
@@ -113,9 +121,6 @@ try {
   }
   if (dom.window.document.querySelector("#provisionalDate")) {
     throw new Error("В редакторе осталась удалённая служебная плашка даты.");
-  }
-  if (!dom.window.document.querySelector("#rulesStatus") || !dom.window.document.querySelector("#checkRulesUpdate") || !dom.window.document.querySelector("#restorePreviousRules")) {
-    throw new Error("В шапке отсутствует компактный статус удалённых правил и управление обновлениями.");
   }
   const reputationRow = dom.window.document.querySelector("#reputationEntries .reputation-entry-row");
   if (!reputationRow

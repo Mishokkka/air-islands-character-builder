@@ -1,11 +1,43 @@
-.aicb-directory-button {
-  flex: 1 1 auto;
-  min-height: 30px;
-  margin: 4px 0 0;
+/* Version 1.2.1 module settings tools */
+.aicb-module-tools {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0.25rem;
 }
 
-.aicb-directory-button span {
-  margin-left: 0.35rem;
+.aicb-module-tools > p {
+  margin: 0;
+  opacity: 0.85;
+}
+
+.aicb-module-tools-grid {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.aicb-module-tools-grid button {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  align-items: center;
+  gap: 0.65rem;
+  min-height: 62px;
+  padding: 0.65rem 0.75rem;
+  text-align: left;
+}
+
+.aicb-module-tools-grid button > i {
+  font-size: 1.35rem;
+  text-align: center;
+}
+
+.aicb-module-tools-grid button > span {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.aicb-module-tools-grid button small {
+  opacity: 0.78;
+  font-weight: 400;
 }
 
 .aicb-file-dialog {
@@ -112,7 +144,6 @@
 }
 
 /* Version 1.0.0 settings, preflight and rule export */
-.aicb-directory-controls { display: flex; flex-wrap: wrap; gap: 0.25rem; }
 .aicb-settings {
   display: grid;
   gap: 0.65rem;

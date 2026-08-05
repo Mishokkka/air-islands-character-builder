@@ -19,6 +19,51 @@ function foundryGeneration() {
   return Number.parseInt(String(game?.version ?? "13"), 10) || 13;
 }
 
+class ModuleToolsApplication extends foundry.applications.api.ApplicationV2 {
+  static DEFAULT_OPTIONS = {
+    id: `${MODULE_ID}-module-tools`,
+    classes: ["aicb-module-tools-application"],
+    tag: "div",
+    window: { title: "Air Islands Character Importer" },
+    position: { width: 520, height: "auto" }
+  };
+
+  async _renderHTML() {
+    return `
+      <div class="aicb-module-tools">
+        <p>Управление импортом персонажей и пакетом правил конструктора.</p>
+        <div class="aicb-module-tools-grid">
+          <button type="button" data-aicb-tool="import"><i class="fa-solid fa-file-import"></i><span><strong>Импорт персонажа</strong><small>Проверить и импортировать файл .flchar.</small></span></button>
+          <button type="button" data-aicb-tool="settings"><i class="fa-solid fa-sliders"></i><span><strong>Настройки конструктора</strong><small>Расы, профессии, Path, заклинания и ограничения кампании.</small></span></button>
+          <button type="button" data-aicb-tool="export"><i class="fa-solid fa-file-export"></i><span><strong>Экспорт .flrules</strong><small>Собрать пакет правил из текущих настроек и компендиумов.</small></span></button>
+        </div>
+      </div>`;
+  }
+
+  _replaceHTML(result, content) {
+    content.innerHTML = result;
+  }
+
+  _onRender(context, options) {
+    super._onRender(context, options);
+    const actions = { import: openImporter, settings: openCampaignSettings, export: exportRulesPackage };
+    for (const button of this.element.querySelectorAll("[data-aicb-tool]")) {
+      button.addEventListener("click", async () => {
+        const action = actions[button.dataset.aicbTool];
+        if (!action) return;
+        button.disabled = true;
+        try {
+          await this.close();
+          await action();
+        } catch (error) {
+          console.error(`${MODULE_ID} | module tool failed`, error);
+          ui.notifications.error(`Не удалось выполнить действие: ${error.message}`);
+        }
+      });
+    }
+  }
+}
+
 Hooks.once("init", () => {
   game.settings.register(MODULE_ID, CONFIG_KEY, {
     name: "Настройки конструктора персонажей",
@@ -27,6 +72,14 @@ Hooks.once("init", () => {
     config: false,
     type: Object,
     default: {}
+  });
+  game.settings.registerMenu(MODULE_ID, "module-tools", {
+    name: "Инструменты конструктора персонажей",
+    label: "Открыть инструменты",
+    hint: "Импорт персонажей, настройка конструктора и экспорт пакета .flrules.",
+    icon: "fa-solid fa-user-gear",
+    type: ModuleToolsApplication,
+    restricted: true
   });
   console.log(`${MODULE_ID} | init | Foundry generation ${foundryGeneration()}`);
 });
@@ -42,48 +95,6 @@ Hooks.once("ready", () => {
       validate: async character => validateCharacter(character, await loadRules())
     };
   }
-});
-
-Hooks.on("getHeaderControlsActorDirectory", (_app, controls) => {
-  if (!game.user.isGM || !Array.isArray(controls)) return;
-  addHeaderControl(controls, {
-    action: `${MODULE_ID}-settings`, label: "Настройки конструктора", icon: "fa-solid fa-sliders", onClick: () => openCampaignSettings()
-  });
-  addHeaderControl(controls, {
-    action: `${MODULE_ID}-export-rules`, label: "Экспорт .flrules", icon: "fa-solid fa-file-export", onClick: () => exportRulesPackage()
-  });
-  addHeaderControl(controls, {
-    action: `${MODULE_ID}-import`, label: "Импорт персонажа", icon: "fa-solid fa-file-import", onClick: () => openImporter()
-  });
-});
-
-function addHeaderControl(controls, control) {
-  if (controls.some(entry => entry.action === control.action)) return;
-  controls.unshift({ visible: true, ...control });
-}
-
-Hooks.on("renderActorDirectory", (_app, html) => {
-  if (foundryGeneration() >= 14 || !game.user.isGM) return;
-  const root = rootElement(html);
-  if (!root || root.querySelector(`[data-aicb-controls]`)) return;
-  const wrapper = document.createElement("div");
-  wrapper.dataset.aicbControls = "true";
-  wrapper.className = "aicb-directory-controls";
-  const definitions = [
-    ["fa-file-import", "Импорт персонажа", openImporter],
-    ["fa-file-export", "Экспорт .flrules", exportRulesPackage],
-    ["fa-sliders", "Настройки", openCampaignSettings]
-  ];
-  for (const [icon, label, action] of definitions) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "aicb-directory-button";
-    button.innerHTML = `<i class="fa-solid ${icon}"></i><span>${label}</span>`;
-    button.addEventListener("click", action);
-    wrapper.append(button);
-  }
-  const target = root.querySelector(".header-actions") ?? root.querySelector(".directory-header") ?? root;
-  target.append(wrapper);
 });
 
 async function loadBundledRules() {
