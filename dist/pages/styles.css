@@ -318,7 +318,7 @@ td input { max-width: 90px; }
   border-radius: 4px;
   padding: 0.45rem;
 }
-.rumor-row { grid-template-columns: 30px minmax(150px, 0.35fr) minmax(0, 1fr) auto; }
+.rumor-row { grid-template-columns: 30px minmax(130px, 0.32fr) 130px minmax(0, 1fr) auto; }
 .gm-request-row { grid-template-columns: minmax(190px, 0.35fr) minmax(0, 1fr) auto; }
 .narrative-row textarea { min-height: 58px; }
 .row-index {

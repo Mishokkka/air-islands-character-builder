@@ -4,12 +4,12 @@
   const core = globalThis.AirIslandsCore;
   const zip = globalThis.AirIslandsZip;
   const appConfig = {
-    builderVersion: "1.2.1",
+    builderVersion: "1.3.0",
     rulesManifestUrl: "./rules/manifest.json",
     remoteCheckTimeoutMs: 8000,
     ...(globalThis.AIR_ISLANDS_CONFIG ?? {})
   };
-  const BUILDER_VERSION = String(appConfig.builderVersion || "1.2.1");
+  const BUILDER_VERSION = String(appConfig.builderVersion || "1.3.0");
   const RULES_DB_NAME = "air-islands-character-builder-rules";
   const RULES_DB_VERSION = 1;
   const RULES_PACKAGE_STORE = "packages";
@@ -122,7 +122,7 @@
     const firstPath = rules.professionPaths.fighter?.[0] ?? null;
     return {
       format: "air-islands-character",
-      formatVersion: 7,
+      formatVersion: 8,
       rulesVersion: rules.rulesVersion,
       rulesHash: rules.packageHash,
       characterId: uid(),
@@ -191,8 +191,8 @@
       },
       otherActiveCharacters: Math.max(0, Number(source.otherActiveCharacters ?? (Array.isArray(source.rumors) ? source.rumors.length : 0)) || 0),
       rumors: (Array.isArray(source.rumors) ? source.rumors : []).map(entry => typeof entry === "string"
-        ? { id: uid(), text: entry, truth: "uncertain" }
-        : { id: entry.id || uid(), text: String(entry.text ?? ""), truth: RUMOR_TRUTH_NAMES[entry.truth] ? entry.truth : "uncertain" })
+        ? { id: uid(), name: "", text: entry, truth: "uncertain" }
+        : { id: entry.id || uid(), name: String(entry.name ?? entry.characterName ?? entry.source ?? ""), text: String(entry.text ?? ""), truth: RUMOR_TRUTH_NAMES[entry.truth] ? entry.truth : "uncertain" })
     };
   }
 
@@ -228,13 +228,13 @@
 
   function migrateCharacter(input) {
     if (!input || input.format !== "air-islands-character") return createDefaultCharacter();
-    if ([2, 3, 4, 5, 6, 7].includes(input.formatVersion)) {
+    if ([2, 3, 4, 5, 6, 7, 8].includes(input.formatVersion)) {
       const migrated = cloneValue(input);
       if (Number(input.formatVersion) < 6) {
         migrated.experience ??= { baseTotal: 0, ledger: [] };
         migrated.experience.baseTotal = Math.max(0, Number(migrated.experience.baseTotal ?? 0)) * 5;
       }
-      migrated.formatVersion = 7;
+      migrated.formatVersion = 8;
       migrated.assets ??= { portrait: null, token: null };
       migrated.identity ??= {};
       migrated.characterId ||= uid();
@@ -271,7 +271,7 @@
 
   function ensureCharacterShape() {
     state.format = "air-islands-character";
-    state.formatVersion = 7;
+    state.formatVersion = 8;
     state.rulesVersion = rules.rulesVersion;
     state.rulesHash = rules.packageHash;
     state.characterId ||= uid();
@@ -1160,7 +1160,7 @@
     });
     el.addRumor.addEventListener("click", () => {
       if (state.biography.rumors.length >= 20) return;
-      state.biography.rumors.push({ id: uid(), text: "", truth: "uncertain" });
+      state.biography.rumors.push({ id: uid(), name: "", text: "", truth: "uncertain" });
       renderRumors(); persist(); updateValidation();
     });
     el.addGmRequest.addEventListener("click", () => {
@@ -1907,13 +1907,17 @@
       row.className = "narrative-row rumor-row";
       row.innerHTML = `
         <span class="row-index">${position + 1}</span>
+        <input type="text" data-rumor-name placeholder="Имя персонажа" aria-label="Имя персонажа, о котором слух">
         <select aria-label="Истинность слуха">${Object.entries(RUMOR_TRUTH_NAMES).map(([value, label]) => `<option value="${value}" ${rumor.truth === value ? "selected" : ""}>${escapeHtml(label)}</option>`).join("")}</select>
         <textarea rows="2" placeholder="Текст слуха"></textarea>
         <button type="button" aria-label="Удалить слух">Удалить</button>
       `;
+      const nameInput = row.querySelector("[data-rumor-name]");
       const select = row.querySelector("select");
       const textarea = row.querySelector("textarea");
+      nameInput.value = rumor.name ?? "";
       textarea.value = rumor.text ?? "";
+      nameInput.addEventListener("input", () => { rumor.name = nameInput.value; persist(); updateValidation(); });
       select.addEventListener("change", () => { rumor.truth = select.value; persist(); updateValidation(); });
       textarea.addEventListener("input", () => { rumor.text = textarea.value; persist(); updateValidation(); });
       row.querySelector("button").addEventListener("click", () => {
@@ -1984,7 +1988,7 @@
     state.createdAt = new Date().toISOString();
     state.rulesVersion = rules.rulesVersion;
     state.rulesHash = rules.packageHash;
-    state.formatVersion = 7;
+    state.formatVersion = 8;
 
     const entries = [];
     const manifestAssets = {};
@@ -2055,7 +2059,7 @@
       }
       syncStaticFields();
       renderDynamic();
-      if (originalVersion !== 7) alert("Файл предыдущей версии перенесён в формат v7. Прежние описания происхождения Reputation сохранены и преобразованы в структурированные записи.");
+      if (originalVersion !== 8) alert("Файл предыдущей версии перенесён в формат v8. Старые слухи сохранены; для них можно дополнительно указать имя персонажа.");
     } catch (error) {
       console.error(error);
       alert(`Не удалось открыть файл: ${error.message}`);

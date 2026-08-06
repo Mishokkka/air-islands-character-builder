@@ -574,7 +574,7 @@ export function validateCharacter(character, rules) {
   const builderSettings = rules.builderSettings ?? {};
 
   if (character.format !== "air-islands-character") add(errors, "FORMAT", "Неизвестный формат файла персонажа.", "format");
-  if (![2, 3, 4, 5, 6, 7].includes(character.formatVersion)) add(errors, "FORMAT_VERSION", "Неподдерживаемая версия формата персонажа. Поддерживаются версии 2–7.", "formatVersion");
+  if (![2, 3, 4, 5, 6, 7, 8].includes(character.formatVersion)) add(errors, "FORMAT_VERSION", "Неподдерживаемая версия формата персонажа. Поддерживаются версии 2–8.", "formatVersion");
   if (character.rulesHash && character.rulesHash !== rules.packageHash) add(warnings, "RULES_HASH", "Персонаж создан на другой версии пакета правил.", "rulesHash");
 
   const identity = character.identity ?? {};
@@ -784,6 +784,81 @@ export function sanitizeEmbeddedItem(snapshot, rank = null, foundryGeneration = 
   return item;
 }
 
+export function characterToQuickAccessBiographyProfile(character, rules) {
+  const index = indexRules(rules);
+  const identity = character.identity ?? {};
+  const bio = character.biography ?? {};
+  const kin = index.kin.get(identity.kinId);
+  const kinVariant = kin?.variants?.find(entry => entry.id === identity.kinVariantId);
+  const profession = index.professions.get(identity.professionId);
+  const origin = index.origins.get(identity.originId);
+  const religion = index.religions.get(identity.religionId);
+  const birthDate = identity.birthDate ?? {};
+  const monthName = index.months.get(birthDate.month)?.name ?? birthDate.month ?? "";
+  const birthLabel = [birthDate.day, monthName, birthDate.year ? `${birthDate.year} П.П.` : ""].filter(Boolean).join(" ");
+
+  return {
+    version: 1,
+    identity: {
+      name: String(identity.name ?? ""),
+      kin: String(kin?.name ?? identity.kinId ?? ""),
+      kinVariant: String(kinVariant?.name ?? identity.kinVariantId ?? ""),
+      profession: String(profession?.name ?? identity.professionId ?? ""),
+      issuingCountry: String(identity.citizenship || origin?.name || identity.originId || ""),
+      origin: String(origin?.name ?? identity.originId ?? ""),
+      religion: String(religion?.name ?? identity.religionId ?? ""),
+      birthDate: {
+        day: Number(birthDate.day) || 0,
+        month: String(monthName),
+        year: Number(birthDate.year) || 0,
+        label: birthLabel
+      }
+    },
+    concept: String(bio.concept ?? ""),
+    pride: String(bio.pride ?? ""),
+    darkSecret: String(bio.darkSecret ?? ""),
+    physical: {
+      appearance: String(bio.appearance ?? ""),
+      height: String(bio.physical?.height ?? ""),
+      weight: String(bio.physical?.weight ?? ""),
+      skin: String(bio.physical?.skin ?? ""),
+      eyes: String(bio.physical?.eyes ?? ""),
+      hair: String(bio.physical?.hair ?? ""),
+      distinguishingMarks: String(bio.physical?.distinguishingMarks ?? "")
+    },
+    background: String(bio.background ?? ""),
+    family: String(bio.family ?? ""),
+    motivation: String(bio.motivation ?? ""),
+    partyConnections: String(bio.partyConnections ?? ""),
+    publicNote: String(bio.publicNote ?? ""),
+    languages: (character.languages ?? []).map((entry, position) => ({
+      id: `language-${position + 1}-${entry.languageId ?? "unknown"}`,
+      languageId: String(entry.languageId ?? ""),
+      name: String(index.languages.get(entry.languageId)?.name ?? entry.languageId ?? ""),
+      level: String(entry.level ?? "basic"),
+      cost: languageSelectionCost(entry, character, rules) ?? 0,
+      native: Boolean(entry.native)
+    })),
+    questions: {
+      bestFriend: String(bio.questions?.bestFriend ?? ""),
+      favoriteFood: String(bio.questions?.favoriteFood ?? ""),
+      prejudices: String(bio.questions?.prejudices ?? ""),
+      aristocracy: String(bio.questions?.aristocracy ?? ""),
+      favoriteMemory: String(bio.questions?.favoriteMemory ?? ""),
+      oneWish: String(bio.questions?.oneWish ?? ""),
+      greatestFear: String(bio.questions?.greatestFear ?? ""),
+      notes: String(bio.questions?.notes ?? "")
+    },
+    rumors: (bio.rumors ?? []).map((entry, position) => ({
+      id: String(entry?.id ?? `rumor-${position + 1}`),
+      name: String(entry?.name ?? entry?.characterName ?? entry?.source ?? ""),
+      text: String(entry?.text ?? ""),
+      truth: ["true", "false", "uncertain"].includes(entry?.truth) ? entry.truth : "uncertain"
+    })),
+    legacy: { face: "", body: "", clothing: "" }
+  };
+}
+
 export function characterToActorData(character, rules, options = {}) {
   const validation = validateCharacter(character, rules);
   const allowInvalid = options.allowInvalid === true;
@@ -800,6 +875,7 @@ export function characterToActorData(character, rules, options = {}) {
   const religion = index.religions.get(identity.religionId);
   const actorName = String(identity.name ?? "").trim() || "Без имени";
   const forcedImport = allowInvalid && !validation.valid;
+  const quickAccessBiography = characterToQuickAccessBiographyProfile(character, rules);
   const ageValue = Number.isFinite(Number(age)) ? Number(age) : 0;
   const reputationValue = Number.isFinite(Number(validation.derived.reputation)) ? Number(validation.derived.reputation) : 0;
   const reputationEntries = normalizeReputationEntries(character.reputation).map((entry, position) => ({
@@ -910,7 +986,8 @@ export function characterToActorData(character, rules, options = {}) {
         importedAt: new Date().toISOString()
       },
       "fbl-quick-access": {
-        reputationEntries: cloneValue(reputationEntries)
+        reputationEntries: cloneValue(reputationEntries),
+        biographyProfile: cloneValue(quickAccessBiography)
       }
     },
     system: {
@@ -924,9 +1001,9 @@ export function characterToActorData(character, rules, options = {}) {
         darkSecret: { label: "BIO.DARK_SECRET", value: paragraphHtml(bio.darkSecret) },
         age: { label: "BIO.AGE", value: ageValue },
         reputation: { label: "BIO.REPUTATION", value: reputationValue },
-        face: { label: "BIO.FACE", value: paragraphHtml(bio.appearance) },
-        body: { label: "BIO.BODY", value: noteHtml },
-        clothing: { label: "BIO.CLOTHING", value: paragraphHtml(bio.background) },
+        face: { label: "BIO.FACE", value: "" },
+        body: { label: "BIO.BODY", value: "" },
+        clothing: { label: "BIO.CLOTHING", value: "" },
         note: { label: "BIO.NOTE", value: paragraphHtml(bio.publicNote ?? "") },
         experience: { label: "BIO.EXPERIENCE", value: experienceValue },
         willpower: { label: "BIO.WILLPOWER", value: 0, min: 0, max: 10 }

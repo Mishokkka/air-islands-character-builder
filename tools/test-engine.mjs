@@ -11,6 +11,7 @@ import {
   languageSelectionCost,
   validateCharacter,
   characterToActorData,
+  characterToQuickAccessBiographyProfile,
   sanitizeEmbeddedItem,
   indexRules,
   replayCharacter,
@@ -23,6 +24,15 @@ const root = path.resolve(__dirname, "..");
 const rules = JSON.parse(fs.readFileSync(path.join(root, "data/generated/air-islands-rules.json"), "utf8"));
 const sample = JSON.parse(fs.readFileSync(path.join(root, "samples/test-character.json"), "utf8"));
 const index = indexRules(rules);
+
+
+const quickAccessBiography = characterToQuickAccessBiographyProfile(sample, rules);
+assert.equal(quickAccessBiography.identity.name, sample.identity.name);
+assert.equal(quickAccessBiography.identity.kinVariant, "Гвирл");
+assert.equal(quickAccessBiography.identity.issuingCountry, "Сиростьен");
+assert.equal(quickAccessBiography.languages[0].name, "Дамийский (Общий)");
+assert.equal(quickAccessBiography.languages[0].cost, 0, "Родной базовый язык не должен повторно стоить очки");
+assert.equal(quickAccessBiography.rumors[0].name, "Сестра");
 
 assert.equal(rules.catalogs.talents.package, "world.talents");
 assert.equal(rules.catalogs.spells.package, "world.spellscomplete");
@@ -138,16 +148,15 @@ assert.equal(actorData.system.bio.experience.value, 0);
 assert.equal(actorData.system.currency.silver.value, 0);
 assert.ok(items.length >= 3);
 assert.ok(items.every(item => !("_id" in item) && !("folder" in item) && !("_stats" in item) && !("ownership" in item)));
-assert.match(actorData.system.bio.body.value, /Слухи/u);
-assert.match(actorData.system.bio.body.value, /Запросы ГМу/u);
-assert.match(actorData.system.bio.body.value, /Никерий/u);
-assert.match(actorData.system.bio.body.value, /<strong><em>Рост:<\/em><\/strong>/u);
-assert.doesNotMatch(actorData.system.bio.body.value, /<dt>/u);
+assert.equal(actorData.system.bio.face.value, "");
+assert.equal(actorData.system.bio.body.value, "");
+assert.equal(actorData.system.bio.clothing.value, "");
+assert.equal(actorData.flags["fbl-quick-access"].biographyProfile.identity.issuingCountry, "Сиростьен");
+assert.equal(actorData.flags["fbl-quick-access"].biographyProfile.rumors[0].name, "Сестра");
 assert.match(actorData.system.bio.note.value, /Сдержанный бывший стражник/u);
 assert.deepEqual(actorData.flags["fbl-quick-access"].reputationEntries, [
   { id: "rep-city-guard", amount: 1, description: "Известен как надёжный участник городской стражи.", location: "Никерий" }
 ]);
-assert.match(actorData.system.bio.body.value, /Никерий/u);
 const legacyReputation = normalizeReputationEntries({ origins: ["Старая запись"] });
 assert.deepEqual(legacyReputation, [{ id: "rep-1", amount: 1, description: "Старая запись", location: "" }]);
 
