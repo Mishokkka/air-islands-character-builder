@@ -208,6 +208,9 @@ try {
   if (dom.window.document.querySelectorAll("#rumors .rumor-row").length !== 2) {
     throw new Error("Редактор слухов не создал две записи.");
   }
+  if (!dom.window.document.querySelector("#rumors .rumor-row [data-rumor-name]")) {
+    throw new Error("У слуха отсутствует отдельное поле имени персонажа.");
+  }
   const requestText = dom.window.document.querySelector("#gmRequestDescription");
   requestText.value = "Тестовый запрос";
   dom.window.document.querySelector("#addGmRequest")?.click();

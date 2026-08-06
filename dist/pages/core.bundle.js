@@ -576,7 +576,7 @@ function validateCharacter(character, rules) {
   const builderSettings = rules.builderSettings ?? {};
 
   if (character.format !== "air-islands-character") add(errors, "FORMAT", "Неизвестный формат файла персонажа.", "format");
-  if (![2, 3, 4, 5, 6, 7].includes(character.formatVersion)) add(errors, "FORMAT_VERSION", "Неподдерживаемая версия формата персонажа. Поддерживаются версии 2–7.", "formatVersion");
+  if (![2, 3, 4, 5, 6, 7, 8].includes(character.formatVersion)) add(errors, "FORMAT_VERSION", "Неподдерживаемая версия формата персонажа. Поддерживаются версии 2–8.", "formatVersion");
   if (character.rulesHash && character.rulesHash !== rules.packageHash) add(warnings, "RULES_HASH", "Персонаж создан на другой версии пакета правил.", "rulesHash");
 
   const identity = character.identity ?? {};

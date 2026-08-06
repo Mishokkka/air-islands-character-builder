@@ -21,7 +21,7 @@ const sample = new Uint8Array(fs.readFileSync(path.join(root, "samples/test-char
 assert.equal(isZip(sample), true);
 const sampleEntries = readZip(sample);
 const character = JSON.parse(decodeText(sampleEntries.get("character.json")));
-assert.equal(character.formatVersion, 7);
+assert.equal(character.formatVersion, 8);
 assert.equal(character.format, "air-islands-character");
 assert.ok(sampleEntries.has("rules.json"));
 const embeddedRules = JSON.parse(decodeText(sampleEntries.get("rules.json")));

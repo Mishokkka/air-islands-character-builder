@@ -23,7 +23,7 @@ Object.assign(skills, {
 
 const character = {
   format: "air-islands-character",
-  formatVersion: 7,
+  formatVersion: 8,
   rulesVersion: rules.rulesVersion,
   rulesHash: rules.packageHash,
   characterId: "sample-character-1.0.5",
@@ -94,8 +94,8 @@ const character = {
     },
     otherActiveCharacters: 2,
     rumors: [
-      { id: "rumor-true", text: "Он однажды спас целый караван.", truth: "true" },
-      { id: "rumor-false", text: "Он продал товарища за серебро.", truth: "false" }
+      { id: "rumor-true", name: "Сестра", text: "Он однажды спас целый караван.", truth: "true" },
+      { id: "rumor-false", name: "Бывший командир", text: "Он продал товарища за серебро.", truth: "false" }
     ]
   },
   equipmentRequest: "Старая сабля, плотный плащ и памятный жетон стражи.",

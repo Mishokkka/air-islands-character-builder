@@ -1,4 +1,4 @@
-import { validateCharacter, characterToActorData, normalizeReputationEntries } from "./core.mjs";
+import { validateCharacter, characterToActorData, characterToQuickAccessBiographyProfile, normalizeReputationEntries } from "./core.mjs";
 import { isZip, readZip, decodeText, createZip } from "./zip.mjs";
 
 const MODULE_ID = "air-islands-character-importer";
@@ -702,6 +702,7 @@ async function applyQuickAccessIntegration(actor, character, rules) {
     kinTalentId: kinTalent?.id ?? null,
     professionalTalentId: professionalTalent?.id ?? null
   };
+  const biographyProfile = characterToQuickAccessBiographyProfile(character, rules);
 
   const quickAccess = game.modules.get("fbl-quick-access")?.api;
   try {
@@ -719,6 +720,14 @@ async function applyQuickAccessIntegration(actor, character, rules) {
     } else {
       await actor.update({
         "flags.fbl-quick-access.willpowerTalents": selection
+      }, { render: false });
+    }
+
+    if (typeof quickAccess?.saveBiographyProfile === "function") {
+      await quickAccess.saveBiographyProfile(actor, biographyProfile, { render: false });
+    } else {
+      await actor.update({
+        "flags.fbl-quick-access.biographyProfile": biographyProfile
       }, { render: false });
     }
   } catch (error) {
