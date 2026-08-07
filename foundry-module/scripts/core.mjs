@@ -765,7 +765,10 @@ export function sanitizeEmbeddedItem(snapshot, rank = null, foundryGeneration = 
   for (const key of ["_id", "folder", "sort", "_stats", "ownership"]) delete item[key];
   item.flags ??= {};
   delete item.flags["scene-packer"];
-  if (rank !== null && item.system) item.system.rank = String(rank);
+  if (rank !== null && item.system) {
+    const numericRank = Number(rank);
+    if (Number.isFinite(numericRank)) item.system.rank = numericRank;
+  }
 
   const generation = Number(foundryGeneration);
   if (Number.isFinite(generation)) {
@@ -851,7 +854,6 @@ export function characterToQuickAccessBiographyProfile(character, rules) {
     },
     rumors: (bio.rumors ?? []).map((entry, position) => ({
       id: String(entry?.id ?? `rumor-${position + 1}`),
-      name: String(entry?.name ?? entry?.characterName ?? entry?.source ?? ""),
       text: String(entry?.text ?? ""),
       truth: ["true", "false", "uncertain"].includes(entry?.truth) ? entry.truth : "uncertain"
     })),

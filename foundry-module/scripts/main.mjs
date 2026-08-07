@@ -1,5 +1,6 @@
 import { validateCharacter, characterToActorData, characterToQuickAccessBiographyProfile, normalizeReputationEntries } from "./core.mjs";
 import { isZip, readZip, decodeText, createZip } from "./zip.mjs";
+import { applyQuickAccessImport } from "./quick-access-bridge.mjs";
 
 const MODULE_ID = "air-islands-character-importer";
 const CONFIG_KEY = "campaign-config";
@@ -705,35 +706,13 @@ async function applyQuickAccessIntegration(actor, character, rules) {
   const biographyProfile = characterToQuickAccessBiographyProfile(character, rules);
 
   const quickAccess = game.modules.get("fbl-quick-access")?.api;
-  try {
-    if (typeof quickAccess?.saveReputationEntries === "function") {
-      await quickAccess.saveReputationEntries(actor, reputationEntries, { render: false });
-    } else {
-      await actor.update({
-        "flags.fbl-quick-access.reputationEntries": reputationEntries,
-        "system.bio.reputation.value": reputationEntries.reduce((sum, entry) => sum + entry.amount, 0)
-      }, { render: false });
-    }
-
-    if (typeof quickAccess?.saveWillpowerTalents === "function") {
-      await quickAccess.saveWillpowerTalents(actor, selection, { render: false });
-    } else {
-      await actor.update({
-        "flags.fbl-quick-access.willpowerTalents": selection
-      }, { render: false });
-    }
-
-    if (typeof quickAccess?.saveBiographyProfile === "function") {
-      await quickAccess.saveBiographyProfile(actor, biographyProfile, { render: false });
-    } else {
-      await actor.update({
-        "flags.fbl-quick-access.biographyProfile": biographyProfile
-      }, { render: false });
-    }
-  } catch (error) {
-    console.warn(`${MODULE_ID} | Quick Access integration failed`, error);
-    ui.notifications?.warn?.("Персонаж импортирован, но данные Quick Access не удалось записать автоматически.");
-  }
+  await applyQuickAccessImport({
+    actor,
+    quickAccess,
+    reputationEntries,
+    selection,
+    biographyProfile
+  });
 }
 
 async function overwriteExistingActor(actor, actorData, items) {
