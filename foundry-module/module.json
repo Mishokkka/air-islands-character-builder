@@ -26,7 +26,8 @@
     ]
   },
   "esmodules": [
-    "scripts/main.mjs"
+    "scripts/main.mjs",
+    "scripts/quick-access-bridge.mjs"
   ],
   "styles": [
     "styles/importer.css"

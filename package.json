@@ -8,11 +8,12 @@
     "build:browser": "node tools/build-browser.mjs",
     "test:engine": "node tools/test-engine.mjs",
     "test:app": "node tools/test-offline-app.mjs",
-    "test": "npm run test:engine && npm run test:zip && npm run test:app && npm run test:remote && npm run test:compat",
+    "test": "npm run test:engine && npm run test:zip && npm run test:app && npm run test:remote && npm run test:compat && npm run test:quick-access",
     "build": "npm run build:rules && npm run build:samples && npm run build:browser && npm test",
     "build:samples": "node tools/make-sample.mjs",
     "test:zip": "node tools/test-zip.mjs",
     "test:compat": "node tools/test-foundry-compat.mjs",
+    "test:quick-access": "node tools/test-quick-access-contract.mjs",
     "build:pages": "npm run build:rules && npm run build:samples && npm run build:browser && node tools/build-pages.mjs && npm run test:pages && npm test",
     "test:remote": "node tools/test-remote-rules.mjs",
     "test:pages": "node tools/test-pages.mjs"
