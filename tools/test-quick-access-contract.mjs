@@ -1,31 +1,23 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const bridge = await import("../foundry-module/scripts/quick-access-bridge.mjs");
 
-const IMPORTER_ID = "air-islands-character-importer";
 const QA_ID = "fbl-quick-access";
 
-function importedActor({ biography = {}, updates = [] } = {}) {
+function actorStub() {
+  const updates = [];
   return {
-    flags: {
-      [IMPORTER_ID]: { profile: { biography: {} }, characterId: "char-1" },
-      [QA_ID]: { biographyProfile: biography, pilgrimCardProfile: { identity: { name: "OLD" } } }
-    },
-    getFlag(moduleId, key) {
-      return this.flags?.[moduleId]?.[key] ?? null;
-    },
+    updates,
     async update(change, options) {
-      updates.push({ change, options });
-      for (const [path, value] of Object.entries(change)) {
-        if (path === `flags.${QA_ID}.pilgrimCardProfile`) this.flags[QA_ID].pilgrimCardProfile = value;
-      }
+      updates.push({ change: structuredClone(change), options: structuredClone(options) });
       return this;
     }
   };
 }
 
-test("Pilgrim Card projection contains only the fields currently shown by Quick Access", () => {
+test("Pilgrim Card projection contains only fields used by the current Quick Access card", () => {
   const card = bridge.pilgrimCardFromBiography({
     identity: {
       name: "Lucien",
@@ -76,129 +68,112 @@ test("Pilgrim Card projection contains only the fields currently shown by Quick 
   assert.equal("profession" in card.identity, false);
 });
 
-test("re-import rewrites an already independent Pilgrim Card from the new BIO snapshot", async () => {
-  const biography = {
-    identity: {
-      name: "NEW",
-      kin: "Human",
-      kinVariant: "",
-      issuingCountry: "Sirosten",
-      birthDate: { day: 1, month: "Хладоход", year: 860, label: "1 Хладохода 860 П.П." }
-    },
-    physical: { appearance: "New appearance", eyes: "Green" }
-  };
-  const actor = importedActor({ biography });
+test("frozen Quick Access API is never mutated and one failing subsystem does not block the others", async () => {
+  const actor = actorStub();
   const calls = [];
-  const qa = {
-    async savePilgrimCardProfile(target, profile, options) {
-      calls.push({ target, profile, options });
-      target.flags[QA_ID].pilgrimCardProfile = structuredClone(profile);
-      return true;
-    }
+  const notices = [];
+  const reputation = async () => {
+    calls.push("reputation");
+    throw new Error("broken reputation");
   };
+  const willpower = async () => { calls.push("willpower"); return true; };
+  const biography = async () => { calls.push("biography"); return true; };
+  const pilgrimCard = async () => { calls.push("pilgrimCard"); return true; };
+  const api = Object.freeze({
+    saveReputationEntries: reputation,
+    saveWillpowerTalents: willpower,
+    saveBiographyProfile: biography,
+    savePilgrimCardProfile: pilgrimCard
+  });
 
-  assert.equal(actor.flags[QA_ID].pilgrimCardProfile.identity.name, "OLD");
-  assert.equal(await bridge.syncImportedPilgrimCard(actor, qa), true);
-  assert.equal(calls.length, 1);
-  assert.equal(calls[0].target, actor);
-  assert.deepEqual(calls[0].options, { render: false });
-  assert.equal(calls[0].profile.identity.name, "NEW");
-  assert.equal(actor.flags[QA_ID].pilgrimCardProfile.identity.name, "NEW");
+  const originalWarn = console.warn;
+  let result;
+  console.warn = () => undefined;
+  try {
+    result = await bridge.applyQuickAccessImport({
+      actor,
+      quickAccess: api,
+      reputationEntries: [{ id: "rep-1", amount: 1, description: "Test", location: "Test" }],
+      selection: { kinTalentId: "kin", professionalTalentId: "profession" },
+      biographyProfile: { identity: { name: "Frozen API" }, physical: {} },
+      notify: (label) => notices.push(label)
+    });
+  } finally {
+    console.warn = originalWarn;
+  }
+
+  assert.deepEqual(result, {
+    reputation: false,
+    willpower: true,
+    biography: true,
+    pilgrimCard: true
+  });
+  assert.deepEqual(calls, ["reputation", "willpower", "biography", "pilgrimCard"]);
+  assert.deepEqual(notices, ["Reputation"]);
+  assert.equal(Object.isFrozen(api), true);
+  assert.equal(api.saveReputationEntries, reputation);
+  assert.equal(api.saveWillpowerTalents, willpower);
+  assert.equal(api.saveBiographyProfile, biography);
+  assert.equal(api.savePilgrimCardProfile, pilgrimCard);
 });
 
-test("older Quick Access builds receive the Pilgrim Card flag through the compatibility fallback", async () => {
-  const updates = [];
-  const actor = importedActor({
-    biography: { identity: { name: "Fallback" }, physical: { hair: "Brown" } },
-    updates
+test("Quick Access compatibility fallbacks write all four sections without an API", async () => {
+  const actor = actorStub();
+  const reputationEntries = [{ id: "rep-1", amount: 2, description: "A", location: "B" }];
+  const selection = { kinTalentId: "kin", professionalTalentId: "profession" };
+  const biographyProfile = {
+    identity: { name: "Fallback", kin: "Human", issuingCountry: "Sirosten" },
+    physical: { hair: "Brown" }
+  };
+
+  const result = await bridge.applyQuickAccessImport({ actor, reputationEntries, selection, biographyProfile });
+
+  assert.deepEqual(result, {
+    reputation: true,
+    willpower: true,
+    biography: true,
+    pilgrimCard: true
   });
-  const previousGame = globalThis.game;
-  globalThis.game = { modules: new Map([[QA_ID, { active: true, api: {} }]]) };
-  try {
-    assert.equal(await bridge.syncImportedPilgrimCard(actor, {}), true);
-    assert.equal(updates.length, 1);
-    assert.equal(updates[0].change[`flags.${QA_ID}.pilgrimCardProfile`].identity.name, "Fallback");
-  } finally {
-    globalThis.game = previousGame;
+  assert.equal(actor.updates.length, 4);
+  assert.deepEqual(actor.updates[0].change[`flags.${QA_ID}.reputationEntries`], reputationEntries);
+  assert.equal(actor.updates[0].change["system.bio.reputation.value"], 2);
+  assert.deepEqual(actor.updates[1].change[`flags.${QA_ID}.willpowerTalents`], selection);
+  assert.deepEqual(actor.updates[2].change[`flags.${QA_ID}.biographyProfile`], biographyProfile);
+  assert.equal(actor.updates[3].change[`flags.${QA_ID}.pilgrimCardProfile`].identity.name, "Fallback");
+});
+
+test("bridge contains no global Quick Access API monkey-patch or Foundry hook registration", async () => {
+  const source = await readFile(new URL("../foundry-module/scripts/quick-access-bridge.mjs", import.meta.url), "utf8");
+  assert.doesNotMatch(source, /api\s*\[\s*methodName\s*\]\s*=/);
+  assert.doesNotMatch(source, /WRAPPED_SAVE/);
+  assert.doesNotMatch(source, /fblQuickAccess\.apiReady/);
+  assert.doesNotMatch(source, /Hooks\.(?:on|once)/);
+  assert.match(source, /Object\.freeze|applyQuickAccessImport|savePilgrimCardProfile/);
+});
+
+test("main importer delegates Quick Access persistence to the isolated call-site helper", async () => {
+  const source = await readFile(new URL("../foundry-module/scripts/main.mjs", import.meta.url), "utf8");
+  assert.match(source, /import\s*\{\s*applyQuickAccessImport\s*\}\s*from\s*["']\.\/quick-access-bridge\.mjs["']/);
+  assert.match(source, /await\s+applyQuickAccessImport\s*\(\s*\{[\s\S]*?actor,[\s\S]*?quickAccess,[\s\S]*?reputationEntries,[\s\S]*?selection,[\s\S]*?biographyProfile[\s\S]*?\}\s*\)/);
+  assert.doesNotMatch(source, /Quick Access integration failed/);
+});
+
+test("both core copies persist numeric talent ranks and send rumor text plus hidden truth without source name", async () => {
+  const sources = await Promise.all([
+    readFile(new URL("../shared/core.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../foundry-module/scripts/core.mjs", import.meta.url), "utf8")
+  ]);
+  for (const source of sources) {
+    assert.match(source, /const numericRank = Number\(rank\);[\s\S]*?Number\.isFinite\(numericRank\)[\s\S]*?item\.system\.rank = numericRank/);
+    const profileStart = source.indexOf("export function characterToQuickAccessBiographyProfile");
+    const profileEnd = source.indexOf("export function characterToActorData", profileStart);
+    const profileSource = source.slice(profileStart, profileEnd);
+    assert.match(profileSource, /rumors:[\s\S]*?text:[\s\S]*?truth:/);
+    assert.doesNotMatch(profileSource, /name:\s*String\(entry\?\.(?:name|characterName|source)/);
   }
 });
 
-test("a failing Quick Access import subsystem does not block the following subsystems", async () => {
-  const actor = importedActor();
-  const calls = [];
-  const notices = [];
-  const api = {
-    async saveReputationEntries() {
-      calls.push("reputation");
-      throw new Error("broken reputation");
-    },
-    async saveWillpowerTalents() {
-      calls.push("willpower");
-      return true;
-    },
-    async saveBiographyProfile() {
-      calls.push("biography");
-      return true;
-    }
-  };
-  bridge.installQuickAccessImportErrorIsolation(api, { notify: (label) => notices.push(label) });
-
-  const results = [];
-  results.push(await api.saveReputationEntries(actor, []));
-  results.push(await api.saveWillpowerTalents(actor, {}));
-  results.push(await api.saveBiographyProfile(actor, {}));
-
-  assert.deepEqual(results, [false, true, true]);
-  assert.deepEqual(calls, ["reputation", "willpower", "biography"]);
-  assert.deepEqual(notices, ["Reputation"]);
-
-  const plainActor = { flags: {}, getFlag: () => null };
-  await assert.rejects(() => api.saveReputationEntries(plainActor, []), /broken reputation/);
-});
-
-test("imported talent ranks are converted to numbers before Foundry persistence", () => {
-  const source = {
-    type: "talent",
-    system: { rank: "5" },
-    flags: { [IMPORTER_ID]: { catalogId: "talent.path", kind: "talent" } }
-  };
-  const updates = [];
-  const item = {
-    ...source,
-    updateSource(change) {
-      updates.push(change);
-      this.system.rank = change["system.rank"];
-    }
-  };
-
-  assert.equal(bridge.normalizeImportedTalentRank(item, source), true);
-  assert.deepEqual(updates, [{ "system.rank": 5 }]);
-  assert.equal(typeof item.system.rank, "number");
-});
-
-test("new Actor source talent ranks are normalized even when embedded Item hooks are not emitted", () => {
-  const actorSource = {
-    flags: { [IMPORTER_ID]: { profile: {}, characterId: "char-2" } },
-    items: [
-      { type: "talent", system: { rank: "3" }, flags: { [IMPORTER_ID]: { catalogId: "talent.a", kind: "talent" } } },
-      { type: "spell", system: { rank: "2" }, flags: { [IMPORTER_ID]: { catalogId: "spell.a", kind: "spell" } } }
-    ]
-  };
-  const actor = {
-    updateSource(change) {
-      actorSource.items = change.items;
-    }
-  };
-
-  assert.equal(bridge.normalizeImportedActorTalentRanks(actor, actorSource), 1);
-  assert.equal(actorSource.items[0].system.rank, 3);
-  assert.equal(typeof actorSource.items[0].system.rank, "number");
-  assert.equal(actorSource.items[1].system.rank, "2");
-});
-
-test("Pilgrim Card resync is triggered by importer payload changes, not ordinary BIO edits", () => {
-  assert.equal(bridge.importerPayloadChanged({ flags: { [IMPORTER_ID]: { profile: {} } } }), true);
-  assert.equal(bridge.importerPayloadChanged({ [`flags.${IMPORTER_ID}.profile`]: {} }), true);
-  assert.equal(bridge.importerPayloadChanged({ [`flags.${QA_ID}.biographyProfile`]: {} }), false);
-  assert.equal(bridge.importerPayloadChanged({ name: "Manual rename" }), false);
+test("Foundry manifest loads the bridge only through main.mjs", async () => {
+  const manifest = JSON.parse(await readFile(new URL("../foundry-module/module.json", import.meta.url), "utf8"));
+  assert.deepEqual(manifest.esmodules, ["scripts/main.mjs"]);
 });
