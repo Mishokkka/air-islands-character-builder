@@ -10,6 +10,7 @@
   let syncingProfession = false;
   let refreshQueued = false;
   let observer = null;
+  let catalogRenderMarker = null;
   const observerOptions = { childList: true, subtree: true, characterData: true };
 
   const OPERATIONAL_PROTOCOLS = new Set([
@@ -228,15 +229,24 @@
     const protocolSelections = document.getElementById("mortarProtocolSelections");
     if (!generalCatalog || !protocolCatalog || !generalSelections || !protocolSelections) return;
 
-    protocolCatalog.replaceChildren();
-    protocolSelections.replaceChildren();
-    for (const tier of [3, 4, 5]) document.getElementById(`mortarCalibrationRank${tier}`)?.replaceChildren();
+    const currentMarker = generalCatalog.firstElementChild;
+    const rebuiltByApp = currentMarker !== catalogRenderMarker;
+    if (rebuiltByApp) {
+      protocolCatalog.replaceChildren();
+      protocolSelections.replaceChildren();
+      for (const tier of [3, 4, 5]) document.getElementById(`mortarCalibrationRank${tier}`)?.replaceChildren();
+    }
 
     if (!active) {
       for (const tile of generalCatalog.querySelectorAll(".catalog-item")) {
         const name = tile.querySelector(".catalog-item-name")?.textContent.trim() ?? "";
         if (mortarOnlyTalent(name)) setHidden(tile, true);
       }
+      for (const row of generalSelections.querySelectorAll(":scope > .selection-row")) {
+        const name = row.querySelector(".catalog-hover")?.textContent.trim() ?? "";
+        if (mortarOnlyTalent(name)) setHidden(row, true);
+      }
+      catalogRenderMarker = generalCatalog.firstElementChild;
       return;
     }
 
@@ -259,22 +269,22 @@
       if (OPERATIONAL_PROTOCOLS.has(name)) protocolSelections.append(row);
     }
 
+    for (const placeholder of [...generalSelections.querySelectorAll(":scope > .readonly-card")]) placeholder.remove();
     const ordinaryRows = generalSelections.querySelectorAll(":scope > .selection-row");
-    const oldPlaceholder = generalSelections.querySelector(":scope > .mortar-general-placeholder");
-    if (ordinaryRows.length) oldPlaceholder?.remove();
-    else if (!oldPlaceholder) {
+    if (!ordinaryRows.length) {
       const placeholder = document.createElement("div");
       placeholder.className = "readonly-card mortar-general-placeholder";
       placeholder.textContent = "Обычные General Talents не выбраны.";
       generalSelections.append(placeholder);
     }
 
-    if (!protocolSelections.querySelector(".selection-row")) {
+    if (!protocolSelections.querySelector(".selection-row") && !protocolSelections.querySelector(".readonly-card")) {
       const placeholder = document.createElement("div");
       placeholder.className = "readonly-card";
       placeholder.textContent = "Operational Protocol пока не выбран.";
       protocolSelections.append(placeholder);
     }
+    catalogRenderMarker = generalCatalog.firstElementChild;
   }
 
   function constrainProtocolControls() {
