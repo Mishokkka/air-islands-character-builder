@@ -27,7 +27,7 @@ function calibrationTalents(rules) {
 }
 
 function currentUiState() {
-  if (typeof globalThis.document === "undefined") return null;
+  if (typeof globalThis.document === "undefined" || !globalThis.AIR_ISLANDS_CONFIG) return null;
   globalThis.AIR_ISLANDS_MORTAR_UI_STATE ??= {
     characterId: null,
     killerRoll: null,
@@ -41,27 +41,42 @@ function syncMortarCreation(character) {
   if (!isMortarCharacter(character)) return;
   character.creation ??= {};
   character.creation.mortar ??= { killerRoll: null, defectRoll: null };
-  const ui = currentUiState();
-  if (!ui) return;
-  const key = String(character.characterId ?? "draft");
-  if (ui.characterId !== key) {
-    ui.characterId = key;
-    ui.killerRoll = Number(character.creation.mortar.killerRoll) || null;
-    ui.defectRoll = Number(character.creation.mortar.defectRoll) || null;
-  } else {
-    character.creation.mortar.killerRoll = Number(ui.killerRoll) || null;
-    character.creation.mortar.defectRoll = Number(ui.defectRoll) || null;
+
+  const key = String(character.characterId ?? "").trim();
+  const ui = key ? currentUiState() : null;
+  if (ui) {
+    if (ui.characterId !== key) {
+      ui.characterId = key;
+      ui.killerRoll = Number(character.creation.mortar.killerRoll) || null;
+      ui.defectRoll = Number(character.creation.mortar.defectRoll) || null;
+    } else {
+      character.creation.mortar.killerRoll = Number(ui.killerRoll) || null;
+      character.creation.mortar.defectRoll = Number(ui.defectRoll) || null;
+    }
   }
 
   character.reputation ??= { entries: [] };
   character.reputation.entries ??= [];
-  const automaticIndex = character.reputation.entries.findIndex(entry => entry.id === "mortar-killer");
+  const automaticIndex = character.reputation.entries.findIndex(entry => entry?.id === "mortar-killer");
   if (Number(character.creation.mortar.killerRoll) === 1 && automaticIndex < 0) {
     character.reputation.entries.unshift({ id: "mortar-killer", amount: 1, description: "Убийца", location: "" });
   }
   if (Number(character.creation.mortar.killerRoll) !== 1 && automaticIndex >= 0) {
     character.reputation.entries.splice(automaticIndex, 1);
   }
+}
+
+function safeActorConversionCharacter(character) {
+  const rumors = character?.biography?.rumors;
+  const gmRequests = character?.gmRequests;
+  const hasNullRumor = Array.isArray(rumors) && rumors.some(entry => entry == null);
+  const hasNullRequest = Array.isArray(gmRequests) && gmRequests.some(entry => entry == null);
+  if (!hasNullRumor && !hasNullRequest) return character;
+
+  const safe = cloneValue(character);
+  if (Array.isArray(safe.biography?.rumors)) safe.biography.rumors = safe.biography.rumors.map(entry => entry ?? {});
+  if (Array.isArray(safe.gmRequests)) safe.gmRequests = safe.gmRequests.map(entry => entry ?? {});
+  return safe;
 }
 
 function isD66(value) {
@@ -295,7 +310,8 @@ function replayMortar(character, rules) {
     }
   };
   const ui = currentUiState();
-  if (ui) {
+  const key = String(character.characterId ?? "").trim();
+  if (ui && key && ui.characterId === key) {
     const recovery = recoveryTalent(rules);
     ui.derived = {
       recoveryRank: recovery ? (state.talents.get(recovery.catalogId) ?? 1) : 1,
@@ -453,12 +469,18 @@ export function characterToQuickAccessBiographyProfile(character, rules) {
 }
 
 export function characterToActorData(character, rules, options = {}) {
-  if (!isMortarCharacter(character)) return base.characterToActorData(character, rules, options);
+  if (!isMortarCharacter(character)) {
+    const safeCharacter = options.allowInvalid === true ? safeActorConversionCharacter(character) : character;
+    const result = base.characterToActorData(safeCharacter, rules, options);
+    if (safeCharacter !== character && result.actorData?.flags?.[MODULE_ID]) result.actorData.flags[MODULE_ID].profile = cloneValue(character);
+    return result;
+  }
   syncMortarCreation(character);
   const validation = validateCharacter(character, rules);
   if (!validation.valid && options.allowInvalid !== true) throw new base.RuleError("INVALID_CHARACTER", "Нельзя создать Actor из невалидного файла персонажа.");
 
-  const skeleton = base.characterToActorData(character, rules, { ...options, allowInvalid: true });
+  const skeletonCharacter = safeActorConversionCharacter(character);
+  const skeleton = base.characterToActorData(skeletonCharacter, rules, { ...options, allowInvalid: true });
   const actorData = skeleton.actorData;
   const index = base.indexRules(rules);
   const finalAttributes = validation.derived.finalAttributes ?? character.attributes ?? {};
