@@ -55,6 +55,28 @@ let replay = replayCharacter(mortar, rules);
 assert.equal(replay.final.talents.find(entry => entry.catalogId === recovery.catalogId)?.rank, 1);
 assert.equal(replay.final.xpSpent, 0);
 
+const killerMortar = structuredClone(mortar);
+killerMortar.creation.mortar = { killerRoll: 1, defectRoll: 11 };
+killerMortar.reputation = { entries: [] };
+replayCharacter(killerMortar, rules);
+assert.equal(killerMortar.reputation.entries[0]?.id, "mortar-killer", "Автоматическая Reputation должна синхронизироваться и без browser UI");
+
+const previousDocument = globalThis.document;
+const previousConfig = globalThis.AIR_ISLANDS_CONFIG;
+const previousUiState = globalThis.AIR_ISLANDS_MORTAR_UI_STATE;
+globalThis.document = {};
+globalThis.AIR_ISLANDS_CONFIG = { builderVersion: "test" };
+globalThis.AIR_ISLANDS_MORTAR_UI_STATE = { characterId: "other-character", killerRoll: 1, defectRoll: 66, derived: null };
+const idlessMortar = structuredClone(mortar);
+delete idlessMortar.characterId;
+idlessMortar.creation.mortar = { killerRoll: 2, defectRoll: 11 };
+replayCharacter(idlessMortar, rules);
+assert.deepEqual(idlessMortar.creation.mortar, { killerRoll: 2, defectRoll: 11 }, "Мортар без characterId не должен получать броски другого черновика");
+assert.equal(globalThis.AIR_ISLANDS_MORTAR_UI_STATE.characterId, "other-character", "Мортар без characterId не должен захватывать UI-state под общим ключом");
+if (previousDocument === undefined) delete globalThis.document; else globalThis.document = previousDocument;
+if (previousConfig === undefined) delete globalThis.AIR_ISLANDS_CONFIG; else globalThis.AIR_ISLANDS_CONFIG = previousConfig;
+if (previousUiState === undefined) delete globalThis.AIR_ISLANDS_MORTAR_UI_STATE; else globalThis.AIR_ISLANDS_MORTAR_UI_STATE = previousUiState;
+
 const r2 = simulateXpTransaction(mortar, rules, { type: "talent", catalogId: recovery.catalogId, toRank: 2 });
 assert.equal(r2.valid, true, r2.issue?.message);
 assert.equal(r2.cost, 20, "Recovery Protocol Rank 2 должен стоить 20 XP");
@@ -127,5 +149,12 @@ assert.equal(actorData.flags["air-islands-character-importer"].mortar.rules.buil
 assert.equal(items.some(item => item.name.startsWith("Recovery Protocol Rank 3:")), false);
 assert.ok(items.some(item => item.name === "Recovery Protocol"));
 assert.ok(items.some(item => item.name === "Combat Protocol"));
+
+const forcedNullEntries = structuredClone(sample);
+forcedNullEntries.biography.rumors = [null];
+forcedNullEntries.gmRequests = [null];
+const forcedNullActor = characterToActorData(forcedNullEntries, rules, { foundryGeneration: 13, allowInvalid: true });
+assert.equal(forcedNullActor.actorData.flags["air-islands-character-importer"].profile.biography.rumors[0], null, "Принудительный импорт должен сохранять исходный профиль с null-элементами");
+assert.equal(forcedNullActor.actorData.flags["air-islands-character-importer"].profile.gmRequests[0], null);
 
 console.log("All Mortar rule-engine tests passed.");
