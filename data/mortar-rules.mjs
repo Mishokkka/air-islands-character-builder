@@ -36,7 +36,10 @@ export const MORTAR_TALENT_ITEMS = [
       "Мортару не нужны пища, вода, сон, дыхание или внешний источник энергии. Он невосприимчив к болезням.",
       "Постоянный Armor Rating корпуса равен 2. Damage режущей атаки уменьшается на 1 до броска брони, но не ниже 1.",
       "REST, SLEEP и HEALING не восстанавливают потерянные STR или AGI и не лечат физические Critical Injuries.",
-      "REBOOT занимает Quarter Day, восстанавливает WITS как сон, 1 EMPATHY, полностью снимает OVERLOAD и позволяет сменить активный пассивный Operational Protocol. MAINTENANCE занимает Quarter Day и снимает 1D6 OVERLOAD.",
+      "REBOOT занимает Quarter Day, заменяет сон, восстанавливает WITS по обычным правилам сна, 1 EMPATHY, полностью снимает OVERLOAD и позволяет сменить один действующий пассивный Operational Protocol.",
+      "MAINTENANCE занимает Quarter Day (6 часов). Во время технического обслуживания можно выполнять ремонт. Если способность не указывает иное, ремонтирующий совершает CRAFTING roll и одновременно бросает Resource Die используемых запчастей. Завершённое MAINTENANCE дополнительно снимает 1D6 OVERLOAD.",
+      "Обычные запчасти используются для полевого восстановления STR и AGI: каждый успех ремонта восстанавливает 1 пункт выбранного Attribute. Если Attribute восстановлен не полностью, оставшийся урон становится Structural Damage, а текущее восстановленное значение становится временным максимумом до точного ремонта.",
+      "Точные запчасти устраняют Structural Damage: каждый успех возвращает 1 пункт утраченного максимума STR или AGI. Механические Critical Injuries также лечатся ремонтом через CRAFTING по условиям соответствующей травмы.",
       "Этот талант бесплатно получают все мортары. У него нет дополнительных рангов."
     ])
   }),
@@ -111,7 +114,7 @@ export const MORTAR_TALENT_ITEMS = [
     name: "Mobility Protocol",
     role: "mortar-operational",
     description: html([
-      "<strong>ПАССИВНЫЙ ПРОТОКОЛ: EXTENDED STRIDE.</strong> Пока активен, каждый RUN становится длиннее на число метров, равное Mobility Protocol Rank + Recovery Protocol Rank.",
+      "<strong>ПАССИВНЫЙ ПРОТОКОЛ: EXTENDED STRIDE.</strong> Пока активен, каждый твой RUN становится длиннее на число метров, равное Mobility Protocol Rank + Recovery Protocol Rank.",
       "<strong>✥ RANK 1: TERRAIN COMPENSATION.</strong> 1 WP: до конца Turn игнорируй обычные штрафы Difficult Terrain при беге, прыжках, лазании и перемещении.",
       "<strong>✥ RANK 2: SERVO BURST.</strong> 1 WP: немедленно выполни MOVE без расходования обычного действия. Не более раза за раунд.",
       "<strong>✥ RANK 3: VERTICAL TRACTION.</strong> 1 WP: до конца раунда перемещайся по вертикальным поверхностям как по обычным. За 2 WP можно двигаться вверх ногами; в конце раунда потрать ещё 1 WP, если остаёшься на стене или вверх ногами, иначе падаешь.",
