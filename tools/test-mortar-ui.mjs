@@ -18,6 +18,9 @@ assert.match(source, /id="mortarProtocolCatalog"/u, "Operational Protocols не 
 assert.match(source, /id="mortarCalibrationRank3"/u);
 assert.match(source, /id="mortarCalibrationRank4"/u);
 assert.match(source, /id="mortarCalibrationRank5"/u);
+assert.match(source, /const MORTAR_BODY_TALENT = "Механическое Тело"/u, "Механическое Тело должно отдельно отслеживаться Mortar UI");
+assert.match(source, /name === MORTAR_BODY_TALENT \|\| OPERATIONAL_PROTOCOLS/u, "Механическое Тело не должно попадать в обычный каталог General Talents других рас");
+assert.match(source, /if \(name === MORTAR_BODY_TALENT\) \{\s*tile\.hidden = true;/u, "Механическое Тело должно показываться собственной карточкой, а не дублироваться в General Talents мортара");
 assert.match(source, /Механическое Тело/u, "В интерфейсе мортара отсутствует отдельный талант Механическое Тело");
 assert.match(source, /REBOOT занимает Quarter Day, заменяет сон, восстанавливает WITS как сон, 1 EMPATHY, полностью снимает OVERLOAD/u, "Описание REBOOT в UI должно совпадать с правилами Механического Тела");
 assert.match(source, /MAINTENANCE занимает Quarter Day \(6 часов\)\. Во время него можно выполнять ремонт/u, "MAINTENANCE должен быть описан как период, во время которого выполняется ремонт");
