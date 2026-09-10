@@ -35,7 +35,7 @@ assert.equal(quickAccessBiography.rumors[0].truth, sample.biography.rumors[0].tr
 assert.equal("name" in quickAccessBiography.rumors[0], false);
 assert.equal(rules.catalogs.talents.package, "world.talents");
 assert.equal(rules.catalogs.spells.package, "world.spellscomplete");
-assert.equal(rules.catalogs.talents.items.length, 132);
+assert.equal(rules.catalogs.talents.items.length, 150);
 assert.equal(rules.catalogs.spells.items.length, 369);
 const monsterHunter = index.professions.get("monster-hunter");
 assert.ok(monsterHunter, "Профессия Monster Hunter отсутствует в правилах");
