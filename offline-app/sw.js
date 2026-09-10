@@ -1,4 +1,4 @@
-const CACHE_NAME = "air-islands-character-builder-1.4.0";
+const CACHE_NAME = "air-islands-character-builder-1.5.0";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -9,6 +9,7 @@ const APP_SHELL = [
   "./app.js",
   "./mortar-ui.js"
 ];
+const NETWORK_FIRST_SHELL = /\.(?:html|css|js)$/iu;
 
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL)).then(() => self.skipWaiting()));
@@ -22,27 +23,38 @@ self.addEventListener("activate", event => {
   );
 });
 
+function keepCacheWriteAlive(event, key, responsePromise) {
+  const cacheUpdate = responsePromise
+    .then(response => {
+      if (!response) return undefined;
+      const copy = response.clone();
+      return caches.open(CACHE_NAME).then(cache => cache.put(key, copy));
+    })
+    .catch(() => undefined);
+  event.waitUntil(cacheUpdate);
+}
+
 self.addEventListener("fetch", event => {
   const request = event.request;
   if (request.method !== "GET") return;
   const url = new URL(request.url);
   if (url.pathname.endsWith("/rules/manifest.json") || url.pathname.endsWith(".flrules")) return;
 
-  if (request.mode === "navigate") {
-    event.respondWith(fetch(request).then(response => {
-      const copy = response.clone();
-      caches.open(CACHE_NAME).then(cache => cache.put("./index.html", copy));
-      return response;
-    }).catch(() => caches.match("./index.html")));
+  const sameOrigin = url.origin === self.location.origin;
+  const networkFirst = request.mode === "navigate" || (sameOrigin && NETWORK_FIRST_SHELL.test(url.pathname));
+  if (networkFirst) {
+    const networkResponse = fetch(request);
+    const key = request.mode === "navigate" ? "./index.html" : request;
+    keepCacheWriteAlive(event, key, networkResponse);
+    event.respondWith(
+      networkResponse.catch(() => request.mode === "navigate" ? caches.match("./index.html") : caches.match(request))
+    );
     return;
   }
 
-  if (url.origin !== self.location.origin) return;
-  event.respondWith(
-    caches.match(request).then(cached => cached || fetch(request).then(response => {
-      const copy = response.clone();
-      caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
-      return response;
-    }))
-  );
+  if (!sameOrigin) return;
+  const cachedResponse = caches.match(request);
+  const networkResponse = cachedResponse.then(cached => cached ? null : fetch(request));
+  keepCacheWriteAlive(event, request, networkResponse);
+  event.respondWith(cachedResponse.then(cached => cached || networkResponse));
 });

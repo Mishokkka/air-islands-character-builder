@@ -12,18 +12,14 @@ const MORTAR_ICONS = {
 
 const html = lines => lines.map(line => `<p>${line}</p>`).join("\n");
 
-function talent({ id, name, systemType = "general", role, description, img = "icons/svg/cog.svg", tier = null, attribute = null }) {
+function talent({ id, name, systemType = "general", role, description, img = "icons/svg/cog.svg" }) {
   return {
     name,
     type: "talent",
     img,
     effects: [],
     flags: {
-      "air-islands-builder": {
-        role,
-        ...(tier === null ? {} : { tier }),
-        ...(attribute === null ? {} : { attribute })
-      }
+      "air-islands-builder": { role }
     },
     system: {
       rollModifiers: {},
@@ -77,11 +73,11 @@ export const MORTAR_TALENT_ITEMS = [
       "<strong>1D[RANK] WP.</strong> 1D[Rank] означает случайное значение от 1 до текущего Rank соответствующего Operational Protocol: Rank 1 = 1; Rank 2 = D2; Rank 3 = D3; Rank 4 = D4; Rank 5 = D5.",
       "<strong>✥ RANK 1: OVERCLOCK.</strong> Если проверка основана на твоём самом высоком максимальном Attribute, после первоначального броска проверки, но до решения о PUSH, можешь потратить X WP и добавить X D6 к Dice Pool. Если несколько Attributes имеют одинаковое максимальное значение, при каждом использовании можно выбрать любой из них. Сравниваются максимальные, а не текущие повреждённые значения Attributes. Получаешь X OVERLOAD. Добавленные D6 являются обычной частью Dice Pool и перебрасываются при PUSH вместе с остальными допустимыми кубами.",
       "<strong>✥ RANK 2: UNRESTRICTED ACCESS.</strong> OVERCLOCK теперь можно применять к проверке любого Attribute независимо от его значения. Немедленно выбери один Operational Protocol и получи его Rank 1 бесплатно.",
-      "<strong>✥ RANK 3: DEEP OVERCLOCK.</strong> При получении ранга увеличь один Attribute на 1. OVERCLOCK получает второй режим: 1 WP + 2 OVERLOAD → 1D8 Artifact Die. При одной проверке выбирается либо Standard Overclock (X WP → X D6 → X OVERLOAD), либо Deep Overclock. Режимы не складываются. D8 входит в Dice Pool и перебрасывается при PUSH, если правила PUSH допускают переброс этого куба.",
-      "<strong>✥ RANK 4: ADVANCED OVERCLOCK.</strong> При получении ранга увеличь один Attribute на 1. Deep Overclock теперь предоставляет 1D10 вместо 1D8. Стоимость остаётся 1 WP + 2 OVERLOAD. Standard Overclock остаётся доступен.",
-      "<strong>✥ RANK 5: FULL SYSTEM ACCESS.</strong> При получении ранга увеличь один Attribute на 1. MAX OVERLOAD увеличивается на 2. Deep Overclock теперь стоит 2 WP + 4 OVERLOAD и предоставляет 1D12 Artifact Die. Standard Overclock остаётся доступен.",
+      "<strong>✥ RANK 3: DEEP OVERCLOCK.</strong> При получении ранга получи +1 очко Attribute для свободного распределения. OVERCLOCK получает второй режим: 1 WP + 2 OVERLOAD → 1D8 Artifact Die. При одной проверке выбирается либо Standard Overclock (X WP → X D6 → X OVERLOAD), либо Deep Overclock. Режимы не складываются. D8 входит в Dice Pool и перебрасывается при PUSH, если правила PUSH допускают переброс этого куба.",
+      "<strong>✥ RANK 4: ADVANCED OVERCLOCK.</strong> При получении ранга получи ещё +1 очко Attribute для свободного распределения. Deep Overclock теперь предоставляет 1D10 вместо 1D8. Стоимость остаётся 1 WP + 2 OVERLOAD. Standard Overclock остаётся доступен.",
+      "<strong>✥ RANK 5: FULL SYSTEM ACCESS.</strong> При получении ранга получи ещё +1 очко Attribute для свободного распределения. MAX OVERLOAD увеличивается на 2. Deep Overclock теперь стоит 2 WP + 4 OVERLOAD и предоставляет 1D12 Artifact Die. Standard Overclock остаётся доступен.",
       "<strong>REDLINE.</strong> В начале своего хода потрать 2 WP. REDLINE создаёт 4 OVERLOAD. До конца раунда получаешь одну дополнительную Slow Action. Для формирования Dice Pool все повреждённые Attributes считаются равными их нормальному максимальному значению, даже если фактически уменьшены или Broken. REDLINE не восстанавливает Attributes, не отменяет Critical Injuries и не снимает Conditions. После окончания раунда используются реальные текущие значения Attributes.",
-      "<strong>MAX OVERLOAD.</strong> Базовый предел равен постоянному максимальному WITS ×2, а не текущему значению после полученного урона. На Recovery Protocol Rank 5 он увеличивается ещё на 2. Итоговый Attribute после повышений Recovery Protocol не может превышать 8."
+      "<strong>MAX OVERLOAD.</strong> Базовый предел равен постоянному максимальному WITS ×2, а не текущему значению после полученного урона. На Recovery Protocol Rank 5 он увеличивается ещё на 2. Каждый Rank 3–5 Recovery Protocol добавляет одно очко в общий пул Attributes. Один итоговый Attribute не может превышать 8."
     ])
   }),
   talent({
@@ -153,24 +149,7 @@ export const MORTAR_TALENT_ITEMS = [
       "<strong>✥ RANK 4: ACCELERATED FRAME.</strong> В начале своего хода потрать 2 WP. До конца раунда получи дополнительную Fast Action, +1 к MOVE и +1 к DODGE.",
       "<strong>✥ RANK 5: HIGH-SPEED STATE.</strong> В начале своего хода потрать 3 WP. До конца раунда получаешь одну дополнительную Slow Action и одну дополнительную Fast Action. Кроме того, каждое обычное MOVE в течение этого раунда позволяет преодолеть на одну зону больше обычного."
     ])
-  }),
-  ...[3, 4, 5].flatMap(tier => [
-    ["strength", "STR"],
-    ["agility", "AGI"],
-    ["wits", "WITS"],
-    ["empathy", "EMPATHY"]
-  ].map(([attribute, label], position) => talent({
-    id: `mCal${tier}${attribute.slice(0, 3)}000${position + 1}`.slice(0, 16),
-    name: `Recovery Protocol Rank ${tier}: +1 ${label}`,
-    role: "mortar-attribute",
-    img: MORTAR_ICONS.recovery,
-    tier,
-    attribute,
-    description: html([
-      `<strong>Системный выбор для мортара.</strong> При получении Recovery Protocol Rank ${tier} увеличь ${label} на 1. Этот выбор не стоит XP и не считается отдельным талантом при импорте.`,
-      "Один Attribute после повышений Recovery Protocol не может превышать 8."
-    ])
-  })))
+  })
 ];
 
 export function applyMortarBaseRules(baseRules) {
@@ -202,19 +181,16 @@ export function applyMortarBaseRules(baseRules) {
   baseRules.builderSettings.enabledKin ??= baseRules.kin.map(entry => entry.id);
   if (!baseRules.builderSettings.enabledKin.includes("mortar")) baseRules.builderSettings.enabledKin.push("mortar");
 
-  baseRules.rulesVersion = "2026.09.10-1.4.1";
-  baseRules.minimumBuilderVersion = "1.4.0";
+  baseRules.rulesVersion = "2026.09.11-1.5.0";
+  baseRules.minimumBuilderVersion = "1.5.0";
   return baseRules;
 }
 
 export function mortarTalentEntry(item) {
-  const role = item.flags?.["air-islands-builder"]?.role ?? null;
-  const tier = Number(item.flags?.["air-islands-builder"]?.tier ?? 0) || null;
-  const attribute = item.flags?.["air-islands-builder"]?.attribute ?? null;
   return {
     sourcePackage: MORTAR_SOURCE_PACKAGE,
-    role,
-    tier,
-    attribute
+    role: item.flags?.["air-islands-builder"]?.role ?? null,
+    tier: null,
+    attribute: null
   };
 }

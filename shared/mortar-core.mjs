@@ -3,6 +3,9 @@ export * from "./core.mjs";
 
 const ATTRIBUTES = ["strength", "agility", "wits", "empathy"];
 const MODULE_ID = "air-islands-character-importer";
+const MORTAR_BASE_ATTRIBUTE_POINTS = 13;
+const MORTAR_BASE_ATTRIBUTE_MAXIMUM = 6;
+const MORTAR_FINAL_ATTRIBUTE_MAXIMUM = 8;
 const cloneValue = value => typeof globalThis.structuredClone === "function" ? globalThis.structuredClone(value) : JSON.parse(JSON.stringify(value));
 const makeIssue = (code, message, path = "") => ({ code, message, path });
 
@@ -26,8 +29,12 @@ function operationalTalents(rules) {
   return mortarTalents(rules).filter(entry => entry.builderRole === "mortar-operational");
 }
 
-function calibrationTalents(rules) {
-  return mortarTalents(rules).filter(entry => entry.builderRole === "mortar-attribute");
+function recoveryAttributeBonusPoints(rank) {
+  return Math.max(0, Math.min(3, Number(rank ?? 1) - 2));
+}
+
+function mortarAttributeMaximumForRank(rank) {
+  return Math.min(MORTAR_FINAL_ATTRIBUTE_MAXIMUM, MORTAR_BASE_ATTRIBUTE_MAXIMUM + recoveryAttributeBonusPoints(rank));
 }
 
 function currentUiState() {
@@ -88,6 +95,10 @@ function isD66(value) {
   return /^[1-6][1-6]$/u.test(text);
 }
 
+function isLegacyCalibrationTransaction(tx) {
+  return tx?.type === "talent" && /^talent:air-islands\.mortar:mCal/iu.test(String(tx.catalogId ?? ""));
+}
+
 function startingSkillCost(rank) {
   return base.startingSkillCost(rank);
 }
@@ -98,7 +109,7 @@ function generalTalentCost(talent, targetRank, state, rules) {
   let distinct = 0;
   for (const catalogId of state.talents.keys()) {
     const entry = rules.catalogs.talents.items.find(item => item.catalogId === catalogId);
-    if (["mortar-attribute", "mortar-body"].includes(entry?.builderRole)) continue;
+    if (entry?.builderRole === "mortar-body") continue;
     distinct += 1;
   }
   if (!state.talents.has(talent.catalogId)) distinct += 1;
@@ -193,28 +204,6 @@ function evaluateMortarXpTransaction(tx, character, rules, index, state) {
       };
     }
 
-    if (talent.builderRole === "mortar-attribute") {
-      const recovery = recoveryTalent(rules);
-      const recoveryRank = recovery ? (state.talents.get(recovery.catalogId) ?? 0) : 0;
-      const tier = Number(talent.recoveryTier ?? 0);
-      const attribute = talent.recoveryAttribute;
-      if (target !== 1 || !ATTRIBUTES.includes(attribute)) return { valid: false, issue: makeIssue("MORTAR_ATTRIBUTE_CHOICE", "Некорректный выбор повышения Recovery Protocol.") };
-      if (recoveryRank < tier) return { valid: false, issue: makeIssue("MORTAR_ATTRIBUTE_LOCKED", `${talent.name} откроется на Recovery Protocol Rank ${tier}.`) };
-      const sameTierChosen = calibrationTalents(rules).some(entry => entry.recoveryTier === tier && state.talents.has(entry.catalogId));
-      if (sameTierChosen) return { valid: false, issue: makeIssue("MORTAR_ATTRIBUTE_TIER_USED", `Повышение Attribute за Recovery Protocol Rank ${tier} уже выбрано.`) };
-      const currentAttribute = state.attributes.get(attribute) ?? 0;
-      if (currentAttribute >= 8) return { valid: false, issue: makeIssue("MORTAR_ATTRIBUTE_CAP", `${attribute.toUpperCase()}: максимум после Recovery Protocol равен 8.`) };
-      return {
-        valid: true, cost: 0, breakdown: null,
-        label: `${talent.name} · бесплатно`,
-        apply: () => {
-          state.talents.set(tx.catalogId, 1);
-          state.talentSources.set(tx.catalogId, "recovery-adjustment");
-          state.attributes.set(attribute, currentAttribute + 1);
-        }
-      };
-    }
-
     if (talent.builderRole === "mortar-operational") {
       const recovery = recoveryTalent(rules);
       const recoveryRank = recovery ? (state.talents.get(recovery.catalogId) ?? 0) : 0;
@@ -276,6 +265,7 @@ function replayMortar(character, rules) {
   const xpBudget = base.baseXpAllowance(character);
 
   for (const [position, tx] of (character.experience?.ledger ?? []).entries()) {
+    if (isLegacyCalibrationTransaction(tx)) continue;
     const evaluation = evaluateMortarXpTransaction(tx, character, rules, index, state);
     const path = `experience.ledger.${position}`;
     if (!evaluation.valid) {
@@ -298,17 +288,30 @@ function replayMortar(character, rules) {
   }
 
   const finalTalents = [...state.talents]
-    .map(([catalogId, rank]) => ({ catalogId, rank, source: state.talentSources.get(catalogId) ?? "xp" }))
-    .filter(selection => index.talents.get(selection.catalogId)?.builderRole !== "mortar-attribute");
+    .map(([catalogId, rank]) => ({ catalogId, rank, source: state.talentSources.get(catalogId) ?? "xp" }));
   const finalAttributes = Object.fromEntries(state.attributes);
+  const recovery = recoveryTalent(rules);
+  const recoveryRank = recovery ? (state.talents.get(recovery.catalogId) ?? 1) : 1;
+  const attributeBonusPoints = recoveryAttributeBonusPoints(recoveryRank);
+  const attributePointsTotal = MORTAR_BASE_ATTRIBUTE_POINTS + attributeBonusPoints;
+  const attributePointsSpent = ATTRIBUTES.reduce((sum, attribute) => sum + (Number(finalAttributes[attribute]) || 0), 0);
+  const attributeMaximum = mortarAttributeMaximumForRank(recoveryRank);
   const result = {
     issues,
     age: null,
     ageCategory: "mortar",
-    categoryRules: rules.ageCategories.mortar,
+    categoryRules: { ...rules.ageCategories.mortar, attributePoints: attributePointsTotal },
     ageTalents: { issues: [], records: [], total: 0, spent: 0, remaining: 0 },
     startingSpells: { issues: [], records: [], initialPath: null, initialRank: 0, expectedTotal: 0, maximumTotal: 0, limitsByRank: {}, actualTotal: 0, allowedDisciplines: [] },
     state,
+    mortar: {
+      recoveryRank,
+      attributeBasePoints: MORTAR_BASE_ATTRIBUTE_POINTS,
+      attributeBonusPoints,
+      attributePointsTotal,
+      attributePointsSpent,
+      attributeMaximum
+    },
     final: {
       attributes: finalAttributes,
       skills: Object.fromEntries(state.skills),
@@ -324,10 +327,17 @@ function replayMortar(character, rules) {
   const ui = currentUiState();
   const key = String(character.characterId ?? "").trim();
   if (ui && key && ui.characterId === key) {
-    const recovery = recoveryTalent(rules);
     ui.derived = {
-      recoveryRank: recovery ? (state.talents.get(recovery.catalogId) ?? 1) : 1,
+      recoveryRank,
+      attributeBasePoints: MORTAR_BASE_ATTRIBUTE_POINTS,
+      attributeBonusPoints,
+      attributePointsTotal,
+      attributePointsSpent,
+      attributeMaximum,
       finalAttributes,
+      xpBudget,
+      xpSpent: state.xpSpent,
+      xpRemaining: xpBudget - state.xpSpent,
       operationalProtocols: state.operationalOrder.map(id => ({ name: index.talents.get(id)?.name ?? id, rank: state.talents.get(id) ?? 0 }))
     };
   }
@@ -343,7 +353,8 @@ export function professionFocuses(character, rules) {
 }
 
 export function attributeMaximum(attribute, character, rules) {
-  return isMortarCharacter(character) ? 6 : base.attributeMaximum(attribute, character, rules);
+  if (!isMortarCharacter(character)) return base.attributeMaximum(attribute, character, rules);
+  return replayMortar(character, rules).mortar.attributeMaximum;
 }
 
 export function allowedSpellDisciplines(character, rules, finalTalents = null) {
@@ -374,14 +385,20 @@ export function simulateAgeTalentTransaction(character, rules, transaction) {
 function mortarMechanicalValidation(character, rules, replay) {
   const errors = [];
   const add = (code, message, path = "") => errors.push({ code, message, path });
+  const recoveryRank = replay.mortar.recoveryRank;
+  const attributeTarget = replay.mortar.attributePointsTotal;
+  const attributeMaximum = replay.mortar.attributeMaximum;
   let attributeTotal = 0;
   for (const attribute of ATTRIBUTES) {
     const value = Number(character.attributes?.[attribute]);
     attributeTotal += Number.isFinite(value) ? value : 0;
     if (!Number.isInteger(value) || value < 2) add("ATTRIBUTE_MIN", `${attribute}: значение должно быть целым и не ниже 2.`, `attributes.${attribute}`);
-    if (value > 6) add("ATTRIBUTE_MAX", `${attribute}: стартовый максимум мортара 6.`, `attributes.${attribute}`);
+    if (value > attributeMaximum) add("ATTRIBUTE_MAX", `${attribute}: при Recovery Protocol Rank ${recoveryRank} максимум ${attributeMaximum}.`, `attributes.${attribute}`);
   }
-  if (attributeTotal !== 13) add("ATTRIBUTE_TOTAL", `Мортар должен распределить ровно 13 очков характеристик, сейчас ${attributeTotal}.`, "attributes");
+  if (attributeTotal !== attributeTarget) {
+    const bonusText = replay.mortar.attributeBonusPoints ? `, включая +${replay.mortar.attributeBonusPoints} от Recovery Protocol` : "";
+    add("ATTRIBUTE_TOTAL", `Мортар должен распределить ровно ${attributeTarget} очков характеристик${bonusText}, сейчас ${attributeTotal}.`, "attributes");
+  }
 
   let skillPoints = 0;
   for (const skill of rules.skills) {
@@ -399,19 +416,8 @@ function mortarMechanicalValidation(character, rules, replay) {
   if (![1, 2].includes(killerRoll)) add("MORTAR_KILLER_ROLL", "Сделайте обязательный D2 бросок Reputation «Убийца».", "creation.mortar.killerRoll");
   if (!isD66(character.creation?.mortar?.defectRoll)) add("MORTAR_DEFECT_ROLL", "Сделайте обязательный D66 бросок дефекта.", "creation.mortar.defectRoll");
 
-  const recovery = recoveryTalent(rules);
-  const recoveryRank = recovery ? (replay.state.talents.get(recovery.catalogId) ?? 1) : 1;
   const knownOps = operationalTalents(rules).filter(entry => replay.state.talents.has(entry.catalogId));
   if (recoveryRank >= 2 && knownOps.length < 1) add("MORTAR_FIRST_PROTOCOL_REQUIRED", "Recovery Protocol Rank 2 требует выбрать первый Operational Protocol Rank 1. Он бесплатный.", "experience.ledger");
-
-  for (let tier = 3; tier <= recoveryRank; tier += 1) {
-    const choices = calibrationTalents(rules).filter(entry => entry.recoveryTier === tier && replay.state.talents.has(entry.catalogId));
-    if (choices.length !== 1) add("MORTAR_ATTRIBUTE_INCREASE_REQUIRED", `Recovery Protocol Rank ${tier} требует выбрать ровно один Attribute для +1.`, "experience.ledger");
-  }
-
-  for (const [attribute, value] of Object.entries(replay.final.attributes ?? {})) {
-    if (value > 8) add("MORTAR_ATTRIBUTE_FINAL_CAP", `${attribute.toUpperCase()}: итоговый максимум после Recovery Protocol равен 8.`, `attributes.${attribute}`);
-  }
 
   errors.push(...replay.issues);
   return errors;
@@ -453,7 +459,14 @@ export function validateCharacter(character, rules) {
     derived: {
       age: null,
       ageCategory: "mortar",
-      attributeMaxima: Object.fromEntries(ATTRIBUTES.map(attribute => [attribute, 6])),
+      attributeMaxima: Object.fromEntries(ATTRIBUTES.map(attribute => [attribute, replay.mortar.attributeMaximum])),
+      attributePoints: {
+        base: replay.mortar.attributeBasePoints,
+        bonus: replay.mortar.attributeBonusPoints,
+        total: replay.mortar.attributePointsTotal,
+        spent: replay.mortar.attributePointsSpent,
+        remaining: replay.mortar.attributePointsTotal - replay.mortar.attributePointsSpent
+      },
       finalAttributes: replay.final.attributes,
       languageBudget,
       languageSpent,
@@ -533,6 +546,7 @@ export function characterToActorData(character, rules, options = {}) {
     killerRoll: Number(character.creation?.mortar?.killerRoll) || null,
     defectRoll: Number(character.creation?.mortar?.defectRoll) || null,
     recoveryRank,
+    attributeBonusPoints: replay.mortar.attributeBonusPoints,
     maxOverload: Number(finalAttributes.wits ?? 0) * 2 + (recoveryRank >= 5 ? 2 : 0),
     startingResources: { ordinarySpareParts: "1D10", precisionSpareParts: "1D8" },
     rules: {
@@ -547,7 +561,7 @@ export function characterToActorData(character, rules, options = {}) {
   const items = [];
   for (const selection of validation.derived.finalTalents) {
     const talent = index.talents.get(selection.catalogId);
-    if (!talent || talent.builderRole === "mortar-attribute") continue;
+    if (!talent) continue;
     items.push(base.sanitizeEmbeddedItem(talent.snapshot, selection.rank, options.foundryGeneration));
   }
   return { actorData, items, validation };
