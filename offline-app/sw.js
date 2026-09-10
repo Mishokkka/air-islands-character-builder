@@ -23,6 +23,17 @@ self.addEventListener("activate", event => {
   );
 });
 
+function keepCacheWriteAlive(event, key, responsePromise) {
+  const cacheUpdate = responsePromise
+    .then(response => {
+      if (!response) return undefined;
+      const copy = response.clone();
+      return caches.open(CACHE_NAME).then(cache => cache.put(key, copy));
+    })
+    .catch(() => undefined);
+  event.waitUntil(cacheUpdate);
+}
+
 self.addEventListener("fetch", event => {
   const request = event.request;
   if (request.method !== "GET") return;
@@ -32,23 +43,18 @@ self.addEventListener("fetch", event => {
   const sameOrigin = url.origin === self.location.origin;
   const networkFirst = request.mode === "navigate" || (sameOrigin && NETWORK_FIRST_SHELL.test(url.pathname));
   if (networkFirst) {
+    const networkResponse = fetch(request);
+    const key = request.mode === "navigate" ? "./index.html" : request;
+    keepCacheWriteAlive(event, key, networkResponse);
     event.respondWith(
-      fetch(request).then(response => {
-        const copy = response.clone();
-        const key = request.mode === "navigate" ? "./index.html" : request;
-        caches.open(CACHE_NAME).then(cache => cache.put(key, copy));
-        return response;
-      }).catch(() => request.mode === "navigate" ? caches.match("./index.html") : caches.match(request))
+      networkResponse.catch(() => request.mode === "navigate" ? caches.match("./index.html") : caches.match(request))
     );
     return;
   }
 
   if (!sameOrigin) return;
-  event.respondWith(
-    caches.match(request).then(cached => cached || fetch(request).then(response => {
-      const copy = response.clone();
-      caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
-      return response;
-    }))
-  );
+  const cachedResponse = caches.match(request);
+  const networkResponse = cachedResponse.then(cached => cached ? null : fetch(request));
+  keepCacheWriteAlive(event, request, networkResponse);
+  event.respondWith(cachedResponse.then(cached => cached || networkResponse));
 });
