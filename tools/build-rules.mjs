@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
+import { applyMortarBaseRules, MORTAR_TALENT_ITEMS, mortarTalentEntry } from "../data/mortar-rules.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..");
@@ -12,7 +13,7 @@ const writeJson = (file, value) => {
   fs.writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`, "utf8");
 };
 
-const baseRules = readJson(path.join(root, "data/base-rules.json"));
+const baseRules = applyMortarBaseRules(readJson(path.join(root, "data/base-rules.json")));
 const talentsSource = readJson(path.join(root, "data/source/Talents.json"));
 const spellsSource = readJson(path.join(root, "data/source/Spells.json"));
 const previousRules = readJsonIfExists(path.join(root, "data/generated/air-islands-rules.json"));
@@ -81,16 +82,8 @@ function professionAccess(name) {
   if (name.includes("Path of the Bullet")) return ["fighter"];
   const prefix = name.match(/^\(([^)]+)\)/u)?.[1];
   return {
-    C: ["champion"],
-    D: ["druid"],
-    F: ["fighter"],
-    H: ["hunter"],
-    M: ["minstrel"],
-    P: ["peddler"],
-    R: ["rider"],
-    Rg: ["rogue"],
-    S: ["sorcerer"],
-    MH: ["monster-hunter"]
+    C: ["champion"], D: ["druid"], F: ["fighter"], H: ["hunter"], M: ["minstrel"],
+    P: ["peddler"], R: ["rider"], Rg: ["rogue"], S: ["sorcerer"], MH: ["monster-hunter"]
   }[prefix] ?? [];
 }
 
@@ -99,38 +92,50 @@ function spellPathKeyForDiscipline(discipline) {
   return entry?.[0] ?? null;
 }
 
+function sourceTalentEntry(item, sourcePackage, extra = {}) {
+  const type = item.system?.type ?? "general";
+  const snapshot = cleanSnapshot(item);
+  snapshot.name = normalizedTalentName(item.name, type);
+  const stableKey = talentStableKey(snapshot.name, type);
+  const entry = {
+    catalogId: previousTalentIds.get(stableKey) ?? `talent:${sourcePackage}:${item._id}`,
+    sourceUuid: `Compendium.${sourcePackage}.Item.${item._id}`,
+    sourceId: item._id,
+    sourceName: item.name,
+    name: snapshot.name,
+    type,
+    image: item.img,
+    maximumRank: 5,
+    snapshot,
+    hash: hash(snapshot),
+    ...extra
+  };
+  if (type === "profession") {
+    entry.pathKey = pathKey(item.name);
+    entry.professions = professionAccess(item.name);
+    entry.magical = entry.professions.some(id => id === "druid" || id === "sorcerer");
+    entry.disciplineKey = entry.pathKey.replace(/^path-of-/u, "");
+  }
+  return entry;
+}
+
 const excludedTalentNames = new Set(["(F) Path of the Enemy"]);
 const talents = talentsSource.items
   .filter(item => !excludedTalentNames.has(item.name))
-  .map(item => {
-    const type = item.system?.type ?? "general";
-    const snapshot = cleanSnapshot(item);
-    snapshot.name = normalizedTalentName(item.name, type);
-    const entry = {
-      catalogId: previousTalentIds.get(talentStableKey(snapshot.name, type)) ?? `talent:${talentsSource.package}:${item._id}`,
-      sourceUuid: `Compendium.${talentsSource.package}.Item.${item._id}`,
-      sourceId: item._id,
-      sourceName: item.name,
-      name: snapshot.name,
-      type,
-      image: item.img,
-      maximumRank: 5,
-      snapshot,
-      hash: hash(snapshot)
-    };
-    if (type === "profession") {
-      entry.pathKey = pathKey(item.name);
-      entry.professions = professionAccess(item.name);
-      entry.magical = entry.professions.some(id => id === "druid" || id === "sorcerer");
-      entry.disciplineKey = entry.pathKey.replace(/^path-of-/u, "");
-    }
-    return entry;
-  });
+  .map(item => sourceTalentEntry(item, talentsSource.package));
+
+for (const item of MORTAR_TALENT_ITEMS) {
+  const metadata = mortarTalentEntry(item);
+  talents.push(sourceTalentEntry(item, metadata.sourcePackage, {
+    builderRole: metadata.role,
+    recoveryTier: metadata.tier,
+    recoveryAttribute: metadata.attribute,
+    maximumRank: metadata.role === "mortar-attribute" ? 1 : 5
+  }));
+}
 
 const kinBySourceName = new Map(talents.filter(item => item.type === "kin").map(item => [item.sourceName, item.catalogId]));
-for (const kin of baseRules.kin) {
-  kin.talentCatalogId = kinBySourceName.get(kin.talentSourceName) ?? null;
-}
+for (const kin of baseRules.kin) kin.talentCatalogId = kinBySourceName.get(kin.talentSourceName) ?? null;
 
 const spells = spellsSource.items.map(item => {
   const snapshot = cleanSnapshot(item);
@@ -161,36 +166,21 @@ for (const ids of Object.values(professionPaths)) ids.sort();
 const hashPayload = {
   ...baseRules,
   catalogs: {
-    talents: {
-      package: talentsSource.package,
-      metadata: talentsSource.metadata,
-      items: talents
-    },
-    spells: {
-      package: spellsSource.package,
-      metadata: spellsSource.metadata,
-      items: spells
-    }
+    talents: { package: talentsSource.package, metadata: talentsSource.metadata, items: talents },
+    spells: { package: spellsSource.package, metadata: spellsSource.metadata, items: spells }
   },
   professionPaths,
   sourceHashes: {
     talents: hash(talentsSource),
+    mortarTalents: hash(MORTAR_TALENT_ITEMS),
     spells: hash(spellsSource)
   }
 };
-const output = {
-  ...hashPayload,
-  generatedAt: new Date().toISOString(),
-  packageHash: hash(hashPayload)
-};
+const output = { ...hashPayload, generatedAt: new Date().toISOString(), packageHash: hash(hashPayload) };
 
 const generatedDir = path.join(root, "data/generated");
 writeJson(path.join(generatedDir, "air-islands-rules.json"), output);
-fs.writeFileSync(
-  path.join(generatedDir, "rules.bundle.js"),
-  `globalThis.AIR_ISLANDS_RULES = ${JSON.stringify(output)};\n`,
-  "utf8"
-);
+fs.writeFileSync(path.join(generatedDir, "rules.bundle.js"), `globalThis.AIR_ISLANDS_RULES = ${JSON.stringify(output)};\n`, "utf8");
 
 const foundryDataDir = path.join(root, "foundry-module/data");
 writeJson(path.join(foundryDataDir, "air-islands-rules.json"), output);
