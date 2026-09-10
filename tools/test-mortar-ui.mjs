@@ -43,7 +43,7 @@ assert.match(source, /observer\.disconnect\(\)/u, "DOM-перестановки 
 
 assert.match(sw, /CACHE_NAME = "air-islands-character-builder-1\.5\.0"/u, "Service Worker cache должен быть обновлён вместе с UI");
 assert.match(sw, /NETWORK_FIRST_SHELL/u, "JS/CSS shell должен обновляться network-first, чтобы старый Mortar UI не застревал в кэше");
-assert.match(sw, /\.(?:html\|css\|js)/u);
+assert.match(sw, /NETWORK_FIRST_SHELL\.test\(url\.pathname\)/u, "Network-first правило должно реально применяться к shell assets");
 assert.match(config, /builderVersion: "1\.5\.0"/u, "Offline builder должен объявлять версию 1.5.0");
 
 console.log("Mortar UI contract checks passed.");
