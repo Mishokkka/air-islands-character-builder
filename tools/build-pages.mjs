@@ -14,7 +14,7 @@ const packageJson = JSON.parse(fs.readFileSync(path.join(root, "package.json"), 
 fs.rmSync(output, { recursive: true, force: true });
 fs.mkdirSync(path.join(output, "rules"), { recursive: true });
 
-for (const filename of ["app.js", "core.bundle.js", "zip.bundle.js", "styles.css", "sw.js"]) {
+for (const filename of ["app.js", "mortar-ui.js", "core.bundle.js", "zip.bundle.js", "styles.css", "sw.js"]) {
   fs.copyFileSync(path.join(appDir, filename), path.join(output, filename));
 }
 
