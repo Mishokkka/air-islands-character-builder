@@ -23,11 +23,18 @@ assert.equal(ageCategoryFor(mortarKin, 500), "mortar");
 assert.equal(rules.ageCategories.mortar.attributePoints, 13);
 assert.equal(rules.ageCategories.mortar.skillPoints, 10);
 assert.equal(rules.ageCategories.mortar.talentPoints, 0);
+assert.equal(mortarKin.summary, "Загадочный пробужденный механизм с разумным интеллектуальным ядром. Во многих частях мира мортары считаются плохим предзнаменованием, в других - интересными механизмами, в третьих - врагами народа. Мортар не выбирает профессию, начинает с Recovery Protocol Rank 1 и развивает Operational Protocols вместо Professional Paths.");
 
+const body = rules.catalogs.talents.items.find(entry => entry.builderRole === "mortar-body");
 const recovery = rules.catalogs.talents.items.find(entry => entry.builderRole === "mortar-recovery");
 const operational = rules.catalogs.talents.items.filter(entry => entry.builderRole === "mortar-operational");
 const calibrations = rules.catalogs.talents.items.filter(entry => entry.builderRole === "mortar-attribute");
+assert.ok(body, "Механическое Тело отсутствует");
+assert.equal(body.name, "Механическое Тело");
+assert.equal(body.maximumRank, 1, "Механическое Тело не должно прокачиваться");
+assert.match(body.snapshot.system.description, /не нужны пища, вода, сон, дыхание/u);
 assert.ok(recovery, "Recovery Protocol отсутствует");
+assert.doesNotMatch(recovery.snapshot.system.description, /МЕХАНИЧЕСКОЕ ТЕЛО/u, "Пассивные свойства тела не должны оставаться внутри Recovery Protocol");
 assert.equal(operational.length, 5);
 assert.equal(calibrations.length, 12);
 assert.equal(mortarKin.talentCatalogId, recovery.catalogId);
@@ -52,8 +59,12 @@ assert.equal(attributeMaximum("empathy", mortar, rules), 6);
 let validation = validateCharacter(mortar, rules);
 assert.equal(validation.valid, true, JSON.stringify(validation.errors, null, 2));
 let replay = replayCharacter(mortar, rules);
+assert.equal(replay.final.talents.find(entry => entry.catalogId === body.catalogId)?.rank, 1, "Механическое Тело должно выдаваться каждому мортару автоматически");
 assert.equal(replay.final.talents.find(entry => entry.catalogId === recovery.catalogId)?.rank, 1);
 assert.equal(replay.final.xpSpent, 0);
+const bodyUpgrade = simulateXpTransaction(mortar, rules, { type: "talent", catalogId: body.catalogId, toRank: 2 });
+assert.equal(bodyUpgrade.valid, false, "Механическое Тело нельзя повышать");
+assert.equal(bodyUpgrade.issue?.code, "MORTAR_BODY_FIXED");
 
 const killerMortar = structuredClone(mortar);
 killerMortar.creation.mortar = { killerRoll: 1, defectRoll: 11 };
@@ -147,8 +158,10 @@ assert.equal(actorData.flags["air-islands-character-importer"].mortar.startingRe
 assert.equal(actorData.flags["air-islands-character-importer"].mortar.startingResources.precisionSpareParts, "1D8");
 assert.equal(actorData.flags["air-islands-character-importer"].mortar.rules.builtInArmor, 2);
 assert.equal(items.some(item => item.name.startsWith("Recovery Protocol Rank 3:")), false);
+assert.ok(items.some(item => item.name === "Механическое Тело"), "Механическое Тело должно импортироваться как отдельный Talent Item");
 assert.ok(items.some(item => item.name === "Recovery Protocol"));
 assert.ok(items.some(item => item.name === "Combat Protocol"));
+assert.match(actorData.flags["fbl-quick-access"].biographyProfile.identity.birthDate.label, /^Пробуждение:/u, "Дата мортара должна экспортироваться как дата пробуждения");
 
 const forcedNullEntries = structuredClone(sample);
 forcedNullEntries.biography.rumors = [null];

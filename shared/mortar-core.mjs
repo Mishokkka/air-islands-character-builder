@@ -18,6 +18,10 @@ function recoveryTalent(rules) {
   return mortarTalents(rules).find(entry => entry.builderRole === "mortar-recovery") ?? null;
 }
 
+function mechanicalBodyTalent(rules) {
+  return mortarTalents(rules).find(entry => entry.builderRole === "mortar-body") ?? null;
+}
+
 function operationalTalents(rules) {
   return mortarTalents(rules).filter(entry => entry.builderRole === "mortar-operational");
 }
@@ -94,7 +98,7 @@ function generalTalentCost(talent, targetRank, state, rules) {
   let distinct = 0;
   for (const catalogId of state.talents.keys()) {
     const entry = rules.catalogs.talents.items.find(item => item.catalogId === catalogId);
-    if (entry?.builderRole === "mortar-attribute") continue;
+    if (["mortar-attribute", "mortar-body"].includes(entry?.builderRole)) continue;
     distinct += 1;
   }
   if (!state.talents.has(talent.catalogId)) distinct += 1;
@@ -126,6 +130,11 @@ function createMortarState(character, rules) {
   const attributes = new Map(ATTRIBUTES.map(attribute => [attribute, Number(character.attributes?.[attribute] ?? 0)]));
   const talents = new Map();
   const talentSources = new Map();
+  const body = mechanicalBodyTalent(rules);
+  if (body) {
+    talents.set(body.catalogId, 1);
+    talentSources.set(body.catalogId, "kin");
+  }
   const recovery = recoveryTalent(rules);
   if (recovery) {
     talents.set(recovery.catalogId, 1);
@@ -166,6 +175,9 @@ function evaluateMortarXpTransaction(tx, character, rules, index, state) {
     if (!talent) return { valid: false, issue: makeIssue("XP_TALENT_UNKNOWN", "Указан неизвестный талант.") };
     const current = state.talents.get(tx.catalogId) ?? 0;
     const target = Number(tx.toRank);
+    if (talent.builderRole === "mortar-body") {
+      return { valid: false, issue: makeIssue("MORTAR_BODY_FIXED", "«Механическое Тело» бесплатно даётся всем мортарам и не имеет повышаемых рангов.") };
+    }
     const maxRank = Number(talent.maximumRank ?? 5);
     if (!Number.isInteger(target) || target !== current + 1 || target > maxRank) {
       return { valid: false, issue: makeIssue("XP_TALENT_SEQUENCE", `${talent.name}: ожидался переход ${current} → ${current + 1}.`) };
@@ -464,7 +476,11 @@ export function characterToQuickAccessBiographyProfile(character, rules) {
   const profile = base.characterToQuickAccessBiographyProfile(character, rules);
   if (!isMortarCharacter(character)) return profile;
   profile.identity.profession = "Нет";
-  profile.identity.birthDate = { day: 0, month: "", year: 0, label: "Не применяется" };
+  const awakeningDate = profile.identity.birthDate ?? {};
+  profile.identity.birthDate = {
+    ...awakeningDate,
+    label: awakeningDate.label ? `Пробуждение: ${awakeningDate.label}` : "Пробуждение не указано"
+  };
   return profile;
 }
 

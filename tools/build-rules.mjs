@@ -130,7 +130,7 @@ for (const item of MORTAR_TALENT_ITEMS) {
     builderRole: metadata.role,
     recoveryTier: metadata.tier,
     recoveryAttribute: metadata.attribute,
-    maximumRank: metadata.role === "mortar-attribute" ? 1 : 5
+    maximumRank: ["mortar-attribute", "mortar-body"].includes(metadata.role) ? 1 : 5
   }));
 }
 

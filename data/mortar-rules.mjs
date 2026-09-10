@@ -28,13 +28,27 @@ function talent({ id, name, systemType = "general", role, description, tier = nu
 
 export const MORTAR_TALENT_ITEMS = [
   talent({
+    id: "mortarBody000001",
+    name: "Механическое Тело",
+    systemType: "kin",
+    role: "mortar-body",
+    description: html([
+      "Мортару не нужны пища, вода, сон, дыхание или внешний источник энергии. Он невосприимчив к болезням.",
+      "Постоянный Armor Rating корпуса равен 2. Damage режущей атаки уменьшается на 1 до броска брони, но не ниже 1.",
+      "REST, SLEEP и HEALING не восстанавливают потерянные STR или AGI и не лечат физические Critical Injuries.",
+      "REBOOT занимает Quarter Day, заменяет сон, восстанавливает WITS по обычным правилам сна, 1 EMPATHY, полностью снимает OVERLOAD и позволяет сменить один действующий пассивный Operational Protocol.",
+      "MAINTENANCE занимает Quarter Day (6 часов). Во время технического обслуживания можно выполнять ремонт. Если способность не указывает иное, ремонтирующий совершает CRAFTING roll и одновременно бросает Resource Die используемых запчастей. Завершённое MAINTENANCE дополнительно снимает 1D6 OVERLOAD.",
+      "Обычные запчасти используются для полевого восстановления STR и AGI: каждый успех ремонта восстанавливает 1 пункт выбранного Attribute. Если Attribute восстановлен не полностью, оставшийся урон становится Structural Damage, а текущее восстановленное значение становится временным максимумом до точного ремонта.",
+      "Точные запчасти устраняют Structural Damage: каждый успех возвращает 1 пункт утраченного максимума STR или AGI. Механические Critical Injuries также лечатся ремонтом через CRAFTING по условиям соответствующей травмы.",
+      "Этот талант бесплатно получают все мортары. У него нет дополнительных рангов."
+    ])
+  }),
+  talent({
     id: "mortarRecover001",
     name: "Recovery Protocol [1]",
     systemType: "kin",
     role: "mortar-recovery",
     description: html([
-      "<strong>МЕХАНИЧЕСКОЕ ТЕЛО.</strong> Мортару не нужны пища, вода, сон, дыхание или внешний источник энергии. Он невосприимчив к болезням. Постоянный Armor Rating корпуса равен 2. Damage режущей атаки уменьшается на 1 до броска брони, но не ниже 1.",
-      "<strong>ВОССТАНОВЛЕНИЕ.</strong> REST, SLEEP и HEALING не восстанавливают потерянные STR или AGI и не лечат физические Critical Injuries. REBOOT занимает Quarter Day, восстанавливает WITS как сон, 1 EMPATHY, полностью снимает OVERLOAD и позволяет сменить активный пассивный Operational Protocol. MAINTENANCE занимает Quarter Day и снимает 1D6 OVERLOAD.",
       "<strong>✥ RANK 1: OVERCLOCK.</strong> После первоначального броска проверки, но до решения о PUSH, если проверка основана на самом высоком максимальном Attribute, потрать X WP: добавь X D6 и получи X OVERLOAD. При равенстве максимумов можно выбрать любой. Добавленные D6 входят в Dice Pool и перебрасываются при PUSH вместе с остальными допустимыми кубами.",
       "<strong>✥ RANK 2: UNRESTRICTED ACCESS.</strong> OVERCLOCK можно применять к проверке любого Attribute. Немедленно выбери один Operational Protocol и получи его Rank 1 бесплатно.",
       "<strong>✥ RANK 3: DEEP OVERCLOCK.</strong> Увеличь один Attribute на 1. Новый режим: 1 WP + 2 OVERLOAD → 1D8 Artifact Die. Standard и Deep Overclock не складываются.",
@@ -100,7 +114,7 @@ export const MORTAR_TALENT_ITEMS = [
     name: "Mobility Protocol",
     role: "mortar-operational",
     description: html([
-      "<strong>ПАССИВНЫЙ ПРОТОКОЛ: EXTENDED STRIDE.</strong> Пока активен, каждый RUN становится длиннее на число метров, равное Mobility Protocol Rank + Recovery Protocol Rank.",
+      "<strong>ПАССИВНЫЙ ПРОТОКОЛ: EXTENDED STRIDE.</strong> Пока активен, каждый твой RUN становится длиннее на число метров, равное Mobility Protocol Rank + Recovery Protocol Rank.",
       "<strong>✥ RANK 1: TERRAIN COMPENSATION.</strong> 1 WP: до конца Turn игнорируй обычные штрафы Difficult Terrain при беге, прыжках, лазании и перемещении.",
       "<strong>✥ RANK 2: SERVO BURST.</strong> 1 WP: немедленно выполни MOVE без расходования обычного действия. Не более раза за раунд.",
       "<strong>✥ RANK 3: VERTICAL TRACTION.</strong> 1 WP: до конца раунда перемещайся по вертикальным поверхностям как по обычным. За 2 WP можно двигаться вверх ногами; в конце раунда потрать ещё 1 WP, если остаёшься на стене или вверх ногами, иначе падаешь.",
@@ -147,7 +161,7 @@ export function applyMortarBaseRules(baseRules) {
       maximumAge: 9999,
       talentSourceName: "Recovery Protocol [1]",
       creationMode: "mortar",
-      summary: "Пробуждённая механическая конструкция с человеческим интеллектуальным ядром. Мортар не выбирает профессию, начинает с Recovery Protocol Rank 1 и развивает Operational Protocols вместо Professional Paths."
+      summary: "Загадочный пробужденный механизм с разумным интеллектуальным ядром. Во многих частях мира мортары считаются плохим предзнаменованием, в других - интересными механизмами, в третьих - врагами народа. Мортар не выбирает профессию, начинает с Recovery Protocol Rank 1 и развивает Operational Protocols вместо Professional Paths."
     });
   }
 
