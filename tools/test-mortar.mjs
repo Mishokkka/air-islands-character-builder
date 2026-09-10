@@ -18,6 +18,16 @@ const rules = JSON.parse(fs.readFileSync(path.join(root, "data/generated/air-isl
 const sample = JSON.parse(fs.readFileSync(path.join(root, "samples/test-character.json"), "utf8"));
 const index = indexRules(rules);
 const mortarKin = index.kin.get("mortar");
+const MORTAR_ICONS = {
+  body: "WhitetransparentICONS/Other/blackbackground/bolt-eye.svg",
+  recovery: "WhitetransparentICONS/Other/blackbackground/techno-heart.svg",
+  combat: "WhitetransparentICONS/Other/blackbackground/crescent-blade_1.svg",
+  bulwark: "WhitetransparentICONS/Other/blackbackground/layered-armor.svg",
+  recon: "WhitetransparentICONS/Other/blackbackground/orbital-rays.svg",
+  mobility: "WhitetransparentICONS/Other/blackbackground/fast-arrow.svg",
+  engineering: "WhitetransparentICONS/Other/blackbackground/big-gear.svg"
+};
+
 assert.ok(mortarKin, "Раса Мортар отсутствует");
 assert.equal(ageCategoryFor(mortarKin, 500), "mortar");
 assert.equal(rules.ageCategories.mortar.attributePoints, 13);
@@ -31,13 +41,50 @@ const operational = rules.catalogs.talents.items.filter(entry => entry.builderRo
 const calibrations = rules.catalogs.talents.items.filter(entry => entry.builderRole === "mortar-attribute");
 assert.ok(body, "Механическое Тело отсутствует");
 assert.equal(body.name, "Механическое Тело");
+assert.equal(body.type, "general", "Механическое Тело должно импортироваться как отдельный General Talent, а не конкурировать с Recovery за kin-слот");
+assert.equal(body.snapshot.system.type, "general");
 assert.equal(body.maximumRank, 1, "Механическое Тело не должно прокачиваться");
-assert.match(body.snapshot.system.description, /не нужны пища, вода, сон, дыхание/u);
+assert.equal(body.image, MORTAR_ICONS.body);
+assert.equal(body.snapshot.img, MORTAR_ICONS.body);
+assert.match(body.snapshot.system.description, /не требуются пища, вода, сон, дыхание/u);
+assert.match(body.snapshot.system.description, /ИНТЕЛЛЕКТУАЛЬНОЕ ЯДРО/u, "В Механическом Теле потеряно правило интеллектуального ядра");
+assert.match(body.snapshot.system.description, /Результат Resource Die одновременно считается Artifact Die/u, "В Механическом Теле потеряна механика Resource Die ремонта");
+assert.match(body.snapshot.system.description, /100%: PSYCHOSIS/u, "В Механическом Теле потеряна шкала OVERLOAD");
 assert.ok(recovery, "Recovery Protocol отсутствует");
+assert.equal(recovery.image, MORTAR_ICONS.recovery);
+assert.equal(recovery.snapshot.img, MORTAR_ICONS.recovery);
 assert.doesNotMatch(recovery.snapshot.system.description, /МЕХАНИЧЕСКОЕ ТЕЛО/u, "Пассивные свойства тела не должны оставаться внутри Recovery Protocol");
+assert.match(recovery.snapshot.system.description, /REDLINE/u, "Recovery Protocol Rank 5 должен содержать REDLINE");
+assert.match(recovery.snapshot.system.description, /REDLINE создаёт 4 OVERLOAD/u);
+assert.match(recovery.snapshot.system.description, /дополнительную Slow Action/u);
+assert.match(recovery.snapshot.system.description, /REDLINE не восстанавливает Attributes, не отменяет Critical Injuries и не снимает Conditions/u, "REDLINE потерял ограничения из исходных правил");
+assert.match(recovery.snapshot.system.description, /D8 входит в Dice Pool и перебрасывается при PUSH/u, "Deep Overclock потерял правило PUSH");
+assert.match(recovery.snapshot.system.description, /Standard Overclock остаётся доступен/u, "Recovery R4/R5 должны сохранять Standard Overclock");
+assert.match(recovery.snapshot.system.description, /постоянному максимальному WITS ×2/u, "MAX OVERLOAD должен использовать постоянный максимум WITS");
 assert.equal(operational.length, 5);
 assert.equal(calibrations.length, 12);
 assert.equal(mortarKin.talentCatalogId, recovery.catalogId);
+
+const operationalByName = new Map(operational.map(entry => [entry.name, entry]));
+const expectedOperationalIcons = new Map([
+  ["Combat Protocol", MORTAR_ICONS.combat],
+  ["Bulwark Protocol", MORTAR_ICONS.bulwark],
+  ["Reconnaissance Protocol", MORTAR_ICONS.recon],
+  ["Engineering Protocol", MORTAR_ICONS.engineering],
+  ["Mobility Protocol", MORTAR_ICONS.mobility]
+]);
+for (const [name, icon] of expectedOperationalIcons) {
+  const entry = operationalByName.get(name);
+  assert.ok(entry, `${name} отсутствует`);
+  assert.equal(entry.image, icon, `${name}: неверная иконка каталога`);
+  assert.equal(entry.snapshot.img, icon, `${name}: неверная иконка импортируемого Item`);
+}
+for (const calibrationEntry of calibrations) assert.equal(calibrationEntry.image, MORTAR_ICONS.recovery, "Калибровки Recovery должны использовать иконку Recovery Protocol");
+assert.match(operationalByName.get("Bulwark Protocol").snapshot.system.description, /независимо от источника БП/u, "Bulwark R3 потерял правило отмены Armor Penetration любого источника");
+assert.match(operationalByName.get("Bulwark Protocol").snapshot.system.description, /можешь немедленно потратить 2 WP/u, "Bulwark R4 потерял немедленное окно активации");
+assert.match(operationalByName.get("Reconnaissance Protocol").snapshot.system.description, /оставь одну из полученных карт, остальные верни/u, "Recon R2 потерял завершение выбора Initiative Cards");
+assert.match(operationalByName.get("Engineering Protocol").snapshot.system.description, /Resource Die истощается по обычным правилам/u, "Engineering R4 потерял расход Resource Die");
+assert.match(operationalByName.get("Engineering Protocol").snapshot.system.description, /Resource Die всё равно бросается и может истощиться/u, "Engineering R5 потерял расход Resource Die");
 
 const mortar = structuredClone(sample);
 mortar.identity.kinId = "mortar";
@@ -95,7 +142,7 @@ mortar.experience.ledger.push({ type: "talent", catalogId: recovery.catalogId, t
 validation = validateCharacter(mortar, rules);
 assert.ok(validation.errors.some(error => error.code === "MORTAR_FIRST_PROTOCOL_REQUIRED"), "После Recovery R2 нужно выбрать первый Operational Protocol");
 
-const combat = operational.find(entry => entry.name === "Combat Protocol");
+const combat = operationalByName.get("Combat Protocol");
 const firstProtocol = simulateXpTransaction(mortar, rules, { type: "talent", catalogId: combat.catalogId, toRank: 1 });
 assert.equal(firstProtocol.valid, true, firstProtocol.issue?.message);
 assert.equal(firstProtocol.cost, 0, "Первый Operational Protocol Rank 1 после Recovery R2 бесплатный");
@@ -123,14 +170,14 @@ const combatR2 = simulateXpTransaction(mortar, rules, { type: "talent", catalogI
 assert.equal(combatR2.valid, true, combatR2.issue?.message);
 assert.equal(combatR2.cost, 10);
 mortar.experience.ledger.push({ type: "talent", catalogId: combat.catalogId, toRank: 2 });
-const blockedSecond = simulateXpTransaction(mortar, rules, { type: "talent", catalogId: operational.find(entry => entry.name === "Mobility Protocol").catalogId, toRank: 1 });
+const blockedSecond = simulateXpTransaction(mortar, rules, { type: "talent", catalogId: operationalByName.get("Mobility Protocol").catalogId, toRank: 1 });
 assert.equal(blockedSecond.valid, false);
 assert.equal(blockedSecond.issue.code, "MORTAR_PROTOCOL_PREVIOUS_RANK");
 
 const combatR3 = simulateXpTransaction(mortar, rules, { type: "talent", catalogId: combat.catalogId, toRank: 3 });
 assert.equal(combatR3.valid, true, combatR3.issue?.message);
 mortar.experience.ledger.push({ type: "talent", catalogId: combat.catalogId, toRank: 3 });
-const mobility = operational.find(entry => entry.name === "Mobility Protocol");
+const mobility = operationalByName.get("Mobility Protocol");
 const secondProtocol = simulateXpTransaction(mortar, rules, { type: "talent", catalogId: mobility.catalogId, toRank: 1 });
 assert.equal(secondProtocol.valid, true, secondProtocol.issue?.message);
 assert.ok(secondProtocol.cost >= 5, "Дополнительный Operational Protocol должен стоить как обычный талант");
@@ -158,9 +205,17 @@ assert.equal(actorData.flags["air-islands-character-importer"].mortar.startingRe
 assert.equal(actorData.flags["air-islands-character-importer"].mortar.startingResources.precisionSpareParts, "1D8");
 assert.equal(actorData.flags["air-islands-character-importer"].mortar.rules.builtInArmor, 2);
 assert.equal(items.some(item => item.name.startsWith("Recovery Protocol Rank 3:")), false);
-assert.ok(items.some(item => item.name === "Механическое Тело"), "Механическое Тело должно импортироваться как отдельный Talent Item");
-assert.ok(items.some(item => item.name === "Recovery Protocol"));
-assert.ok(items.some(item => item.name === "Combat Protocol"));
+const importedBody = items.find(item => item.name === "Механическое Тело");
+assert.ok(importedBody, "Механическое Тело должно импортироваться как отдельный Talent Item");
+assert.equal(importedBody.system.type, "general", "Механическое Тело должно быть видимым отдельным General Talent на листе Actor");
+assert.equal(importedBody.system.rank, 1);
+assert.equal(importedBody.img, MORTAR_ICONS.body);
+const importedRecovery = items.find(item => item.name === "Recovery Protocol");
+assert.ok(importedRecovery);
+assert.equal(importedRecovery.img, MORTAR_ICONS.recovery);
+const importedCombat = items.find(item => item.name === "Combat Protocol");
+assert.ok(importedCombat);
+assert.equal(importedCombat.img, MORTAR_ICONS.combat);
 assert.match(actorData.flags["fbl-quick-access"].biographyProfile.identity.birthDate.label, /^Пробуждение:/u, "Дата мортара должна экспортироваться как дата пробуждения");
 
 const forcedNullEntries = structuredClone(sample);
