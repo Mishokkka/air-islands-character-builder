@@ -8,7 +8,10 @@ const root = path.resolve(__dirname, "..");
 const manifest = JSON.parse(fs.readFileSync(path.join(root, "foundry-module/module.json"), "utf8"));
 const main = fs.readFileSync(path.join(root, "foundry-module/scripts/main.mjs"), "utf8");
 const core = fs.readFileSync(path.join(root, "shared/core.mjs"), "utf8");
+const mortarCore = fs.readFileSync(path.join(root, "shared/mortar-core.mjs"), "utf8");
 const foundryCore = fs.readFileSync(path.join(root, "foundry-module/scripts/core.mjs"), "utf8");
+const foundryCoreBase = fs.readFileSync(path.join(root, "foundry-module/scripts/core-base.mjs"), "utf8");
+const mortarMigration = fs.readFileSync(path.join(root, "foundry-module/scripts/mortar-migration.mjs"), "utf8");
 const quickAccessBridge = fs.readFileSync(path.join(root, "foundry-module/scripts/quick-access-bridge.mjs"), "utf8");
 const importerCss = fs.readFileSync(path.join(root, "foundry-module/styles/importer.css"), "utf8");
 
@@ -71,7 +74,13 @@ assert.match(quickAccessBridge, /flags\.\$\{QUICK_ACCESS_ID\}\.willpowerTalents/
 assert.doesNotMatch(quickAccessBridge, /api\s*\[\s*methodName\s*\]\s*=/u);
 assert.doesNotMatch(quickAccessBridge, /fblQuickAccess\.apiReady/u);
 assert.match(core, /item\.system\.rank = numericRank/u);
-assert.match(foundryCore, /item\.system\.rank = numericRank/u);
+assert.match(foundryCoreBase, /item\.system\.rank = numericRank/u);
+assert.match(foundryCore, /from "\.\/core-base\.mjs"/u);
+assert.match(foundryCore, /safeActorConversionCharacter/u);
+assert.doesNotMatch(mortarCore, /character\.characterId \?\? "draft"/u);
+assert.match(mortarCore, /const ui = key \? currentUiState\(\) : null/u);
+assert.match(mortarCore, /!globalThis\.AIR_ISLANDS_CONFIG/u);
+assert.match(mortarMigration, /!stored\.enabledKin\.length/u);
 assert.match(core, /"fbl-quick-access"/u);
 assert.match(core, /reputationEntries/u);
 assert.match(main, /Импортировать несмотря на ошибки/u);

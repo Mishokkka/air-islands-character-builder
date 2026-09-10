@@ -7,7 +7,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..");
 
 await build({
-  entryPoints: [path.join(root, "shared/core.mjs")],
+  entryPoints: [path.join(root, "shared/mortar-core.mjs")],
   bundle: true,
   format: "iife",
   globalName: "AirIslandsCore",
@@ -28,8 +28,11 @@ fs.copyFileSync(
 );
 fs.copyFileSync(
   path.join(root, "shared/core.mjs"),
-  path.join(root, "foundry-module/scripts/core.mjs")
+  path.join(root, "foundry-module/scripts/core-base.mjs")
 );
+let mortarCore = fs.readFileSync(path.join(root, "shared/mortar-core.mjs"), "utf8");
+mortarCore = mortarCore.replace('from "./core.mjs"', 'from "./core-base.mjs"').replace('from "./core.mjs"', 'from "./core-base.mjs"');
+fs.writeFileSync(path.join(root, "foundry-module/scripts/core.mjs"), mortarCore, "utf8");
 fs.copyFileSync(
   path.join(root, "shared/zip.mjs"),
   path.join(root, "foundry-module/scripts/zip.mjs")

@@ -158,10 +158,10 @@ test("main importer delegates Quick Access persistence to the isolated call-site
   assert.doesNotMatch(source, /Quick Access integration failed/);
 });
 
-test("both core copies persist numeric talent ranks and send rumor text plus hidden truth without source name", async () => {
+test("base core copies persist numeric talent ranks and send rumor text plus hidden truth without source name", async () => {
   const sources = await Promise.all([
     readFile(new URL("../shared/core.mjs", import.meta.url), "utf8"),
-    readFile(new URL("../foundry-module/scripts/core.mjs", import.meta.url), "utf8")
+    readFile(new URL("../foundry-module/scripts/core-base.mjs", import.meta.url), "utf8")
   ]);
   for (const source of sources) {
     assert.match(source, /const numericRank = Number\(rank\);[\s\S]*?Number\.isFinite\(numericRank\)[\s\S]*?item\.system\.rank = numericRank/);
@@ -171,9 +171,14 @@ test("both core copies persist numeric talent ranks and send rumor text plus hid
     assert.match(profileSource, /rumors:[\s\S]*?text:[\s\S]*?truth:/);
     assert.doesNotMatch(profileSource, /name:\s*String\(entry\?\.(?:name|characterName|source)/);
   }
+
+  const wrapper = await readFile(new URL("../foundry-module/scripts/core.mjs", import.meta.url), "utf8");
+  assert.match(wrapper, /from "\.\/core-base\.mjs"/);
+  assert.match(wrapper, /base\.sanitizeEmbeddedItem/);
 });
 
-test("Foundry manifest loads the bridge only through main.mjs", async () => {
+test("Foundry manifest loads Quick Access bridge only through main.mjs and registers Mortar migration separately", async () => {
   const manifest = JSON.parse(await readFile(new URL("../foundry-module/module.json", import.meta.url), "utf8"));
-  assert.deepEqual(manifest.esmodules, ["scripts/main.mjs"]);
+  assert.deepEqual(manifest.esmodules, ["scripts/main.mjs", "scripts/mortar-migration.mjs"]);
+  assert.equal(manifest.esmodules.includes("scripts/quick-access-bridge.mjs"), false);
 });
