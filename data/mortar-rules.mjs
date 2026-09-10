@@ -40,7 +40,6 @@ export const MORTAR_TALENT_ITEMS = [
   talent({
     id: "mortarBody000001",
     name: "Механическое Тело",
-    systemType: "kin",
     role: "mortar-body",
     img: MORTAR_ICONS.body,
     description: html([
