@@ -131,7 +131,7 @@
         <div id="mortarBodyTalent" class="readonly-card mortar-body-talent">
           <div class="mortar-body-title"><strong>Механическое Тело</strong><span>Бесплатно · без рангов</span></div>
           <p>Постоянные свойства механического организма: не нужны пища, вода, сон и дыхание; иммунитет к болезням; Armor Rating корпуса 2; режущий Damage уменьшается на 1 до брони, но не ниже 1.</p>
-          <p>REST, SLEEP и HEALING не восстанавливают физические повреждения мортара. Для восстановления используются REBOOT, MAINTENANCE и правила ремонта.</p>
+          <p>REST, SLEEP и HEALING не восстанавливают потерянные STR или AGI и не лечат физические Critical Injuries. REBOOT занимает Quarter Day, восстанавливает WITS как сон, 1 EMPATHY, полностью снимает OVERLOAD и позволяет сменить активный пассивный Operational Protocol. MAINTENANCE занимает Quarter Day и снимает 1D6 OVERLOAD.</p>
         </div>
 
         <h3>Recovery Protocol</h3>
