@@ -40,6 +40,11 @@
     return [...(panel?.querySelectorAll("h3") ?? [])].find(node => node.textContent.trim() === text) ?? null;
   }
 
+  function mechanicalBodyDescription() {
+    const entry = globalThis.AIR_ISLANDS_RULES?.catalogs?.talents?.items?.find(item => item.builderRole === "mortar-body");
+    return String(entry?.snapshot?.system?.description ?? "").trim();
+  }
+
   function ensureStyle() {
     if (document.getElementById("mortar-builder-style")) return;
     const style = document.createElement("style");
@@ -57,7 +62,8 @@
       .mortar-body-talent { display: grid; gap: .45rem; }
       .mortar-body-title { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .5rem 1rem; align-items: baseline; }
       .mortar-body-title span { opacity: .72; font-size: .9em; }
-      .mortar-body-talent p { margin: 0; opacity: .9; }
+      .mortar-body-description { display: grid; gap: .45rem; }
+      .mortar-body-description p { margin: 0; opacity: .9; }
       .mortar-calibration-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; margin-top: .65rem; }
       .mortar-calibration-tier { min-width: 0; padding: .65rem; border: 1px solid color-mix(in srgb, currentColor 16%, transparent); border-radius: 7px; }
       .mortar-calibration-tier h4 { margin: 0 0 .55rem; }
@@ -131,9 +137,7 @@
         <h3>Механическое Тело</h3>
         <div id="mortarBodyTalent" class="readonly-card mortar-body-talent">
           <div class="mortar-body-title"><strong>Механическое Тело</strong><span>Бесплатно · без рангов</span></div>
-          <p>Постоянные свойства механического организма: не нужны пища, вода, сон и дыхание; иммунитет к болезням; Armor Rating корпуса 2; режущий Damage уменьшается на 1 до брони, но не ниже 1.</p>
-          <p>REST, SLEEP и HEALING не восстанавливают потерянные STR или AGI и не лечат физические Critical Injuries. REBOOT занимает Quarter Day, заменяет сон, восстанавливает WITS как сон, 1 EMPATHY, полностью снимает OVERLOAD и позволяет сменить активный пассивный Operational Protocol.</p>
-          <p>MAINTENANCE занимает Quarter Day (6 часов). Во время него можно выполнять ремонт: ремонтирующий совершает CRAFTING roll и одновременно бросает Resource Die запчастей. Обычный ремонт восстанавливает потерянные STR или AGI по 1 пункту за каждый успех; непочиненный остаток становится Structural Damage. Точный ремонт возвращает утраченный максимум STR или AGI, а механические Critical Injuries также устраняются ремонтом через CRAFTING по условиям травмы. Завершённое MAINTENANCE дополнительно снимает 1D6 OVERLOAD.</p>
+          <div id="mortarBodyDescription" class="mortar-body-description"></div>
         </div>
 
         <h3>Recovery Protocol</h3>
@@ -157,6 +161,15 @@
       anchor.after(section);
     }
     return section;
+  }
+
+  function syncMechanicalBodyDescription(active) {
+    if (!active) return;
+    const container = document.getElementById("mortarBodyDescription");
+    if (!container) return;
+    const description = mechanicalBodyDescription();
+    const next = description || "<p>Описание «Механического Тела» отсутствует в текущем пакете правил.</p>";
+    if (container.innerHTML !== next) container.innerHTML = next;
   }
 
   function syncRollCard(active) {
@@ -423,6 +436,7 @@
       syncProfession(active);
       syncAge(active);
       syncTalentSections(active);
+      syncMechanicalBodyDescription(active);
       syncSkills(active);
       syncDerived(active);
       syncSpells(active);
