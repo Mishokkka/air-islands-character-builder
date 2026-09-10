@@ -505,15 +505,18 @@
       const add = tile.querySelector("[data-buy-xp]");
       if (!add) continue;
       let blocked = current >= 5;
-      let reason = current >= 5 ? "Достигнут Rank 5." : "";
-      if (!current && recoveryRank < 2) {
-        blocked = true;
-        reason = "Первый Operational Protocol открывается на Recovery Protocol Rank 2.";
-      } else if (!current && known.length && (recoveryRank < 3 || Number(lastKnown?.rank ?? 0) < 3)) {
-        blocked = true;
-        reason = recoveryRank < 3
-          ? "Дополнительные Operational Protocols открываются с Recovery Protocol Rank 3."
-          : `Сначала развейте ${lastKnown?.name ?? "предыдущий Operational Protocol"} до Rank 3.`;
+      let reason = blocked ? "Достигнут Rank 5." : "";
+      if (!blocked && current === 0) {
+        if (recoveryRank < 2) {
+          blocked = true;
+          reason = "Первый Operational Protocol откроется на Recovery Protocol Rank 2.";
+        } else if (known.length && recoveryRank < 3) {
+          blocked = true;
+          reason = "Дополнительные Operational Protocols открываются начиная с Recovery Protocol Rank 3.";
+        } else if (known.length && Number(lastKnown?.rank ?? 0) < 3) {
+          blocked = true;
+          reason = `Сначала развейте ${lastKnown?.name ?? "предыдущий Operational Protocol"} до Rank 3.`;
+        }
       }
       add.disabled = blocked;
       add.title = reason || (!current && !known.length ? "Выбрать первый Operational Protocol Rank 1 бесплатно." : "Добавить или повысить Operational Protocol.");
@@ -538,16 +541,17 @@
     const badges = document.getElementById("mortarSystemBadges");
     const operationSummary = document.getElementById("mortarOperationalSummary");
     const budget = document.getElementById("mortarAttributeBudget");
-    if (!badges || !operationSummary || !budget) return;
+    if (!derived || !badges || !operationSummary || !budget) return;
 
-    const recoveryRank = Number(derived?.recoveryRank ?? 1);
-    const operations = Array.isArray(derived?.operationalProtocols) ? derived.operationalProtocols : [];
-    const bonus = Number(derived?.attributeBonusPoints ?? Math.max(0, recoveryRank - 2));
-    const total = Number(derived?.attributePointsTotal ?? 13 + bonus);
-    const spent = Number(derived?.attributePointsSpent ?? total - bonus);
+    const recoveryRank = Number(derived.recoveryRank);
+    const operations = Array.isArray(derived.operationalProtocols) ? derived.operationalProtocols : [];
+    const bonus = Number(derived.attributeBonusPoints);
+    const total = Number(derived.attributePointsTotal);
+    const spent = Number(derived.attributePointsSpent);
     const remaining = total - spent;
-    const maximum = Number(derived?.attributeMaximum ?? Math.min(8, 6 + bonus));
-    const xpRemaining = Number(derived?.xpRemaining ?? 0);
+    const maximum = Number(derived.attributeMaximum);
+    const base = total - bonus;
+    const xpRemaining = Number(derived.xpRemaining);
 
     badges.innerHTML = `
       <span class="mortar-system-badge">Recovery R${recoveryRank}</span>
@@ -558,21 +562,22 @@
       : "Operational Protocol ещё не открыт";
     budget.classList.toggle("is-unspent", remaining !== 0);
     budget.innerHTML = `
-      <strong>Пул Attributes: 13 базовых${bonus ? ` + ${bonus} от Recovery` : ""} = ${total}</strong>
+      <strong>Пул Attributes: ${base} базовых${bonus ? ` + ${bonus} от Recovery` : ""} = ${total}</strong>
       <span>Распределено ${spent}/${total}${remaining > 0 ? ` · осталось ${remaining}` : remaining < 0 ? ` · превышение ${Math.abs(remaining)}` : ""}</span>
-      <small>Recovery Ranks 3, 4 и 5 добавляют по 1 свободному очку Attribute. Текущий максимум одного Attribute: ${maximum}; абсолютный максимум после Recovery: 8.</small>`;
+      <small>Recovery Ranks 3, 4 и 5 добавляют по 1 свободному очку Attribute. Текущий максимум одного Attribute: ${maximum}.</small>`;
   }
 
   function syncAttributeBudget(active) {
     if (!active) return;
     const derived = uiState.derived;
     const summary = document.getElementById("attributeSummary");
-    if (!summary) return;
-    const bonus = Number(derived?.attributeBonusPoints ?? 0);
-    const total = Number(derived?.attributePointsTotal ?? 13 + bonus);
-    const spent = Number(derived?.attributePointsSpent ?? [...document.querySelectorAll("#attributes input[data-attribute]")].reduce((sum, input) => sum + (Number(input.value) || 0), 0));
+    if (!derived || !summary) return;
+    const bonus = Number(derived.attributeBonusPoints);
+    const total = Number(derived.attributePointsTotal);
+    const spent = Number(derived.attributePointsSpent);
     const remaining = total - spent;
-    summary.textContent = `Распределено ${spent} из ${total}${bonus ? ` (13 базовых + ${bonus} от Recovery Protocol)` : ""}.${remaining > 0 ? ` Осталось: ${remaining}.` : remaining < 0 ? ` Превышение: ${Math.abs(remaining)}.` : ""}`;
+    const base = total - bonus;
+    summary.textContent = `Распределено ${spent} из ${total}${bonus ? ` (${base} базовых + ${bonus} от Recovery Protocol)` : ""}.${remaining > 0 ? ` Осталось: ${remaining}.` : remaining < 0 ? ` Превышение: ${Math.abs(remaining)}.` : ""}`;
     summary.classList.toggle("error", remaining !== 0);
   }
 
@@ -602,10 +607,12 @@
   }
 
   function syncSkills(active) {
-    for (const input of document.querySelectorAll("#skillsBody input[data-skill]")) {
-      input.max = active ? "2" : "4";
-      if (active) input.title = "Стартовый максимум любого навыка мортара: 2.";
-      else if (input.title === "Стартовый максимум любого навыка мортара: 2.") input.removeAttribute("title");
+    const rows = document.querySelectorAll("#skillsBody tr");
+    for (const row of rows) {
+      const selects = row.querySelectorAll("select");
+      const starting = selects[0];
+      if (!starting) continue;
+      for (const option of starting.options) option.disabled = active && Number(option.value) > 2;
     }
   }
 
@@ -617,7 +624,7 @@
       summary = document.createElement("div");
       summary.id = "mortarDerivedSummary";
       summary.className = "summary-line mortar-derived-summary";
-      document.getElementById("attributeSummary")?.after(summary);
+      panel.append(summary);
     }
     setHidden(summary, !active);
     if (!active) return;
@@ -664,19 +671,29 @@
   function queueRefresh() {
     if (refreshQueued) return;
     refreshQueued = true;
-    requestAnimationFrame(() => {
+    queueMicrotask(() => {
       refreshQueued = false;
       refresh();
     });
   }
 
-  document.addEventListener("DOMContentLoaded", () => {
-    ensureStyle();
-    document.getElementById("kin")?.addEventListener("change", queueRefresh);
-    document.getElementById("kinVariant")?.addEventListener("change", queueRefresh);
-    document.getElementById("resetDraft")?.addEventListener("click", () => setTimeout(queueRefresh, 0));
+  function resetUiState() {
+    uiState.characterId = null;
+    uiState.killerRoll = null;
+    uiState.defectRoll = null;
+    uiState.derived = null;
+  }
+
+  function install() {
     observer = new MutationObserver(queueRefresh);
     observer.observe(document.body, observerOptions);
-    queueRefresh();
-  });
+    for (const id of ["kin", "kinVariant", "profession"]) {
+      document.getElementById(id)?.addEventListener("change", queueRefresh);
+    }
+    document.getElementById("resetDraft")?.addEventListener("click", resetUiState);
+    refresh();
+  }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", install, { once: true });
+  else install();
 })();
