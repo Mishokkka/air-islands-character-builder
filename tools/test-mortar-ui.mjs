@@ -44,6 +44,11 @@ assert.match(source, /observer\.disconnect\(\)/u, "DOM-перестановки 
 assert.match(sw, /CACHE_NAME = "air-islands-character-builder-1\.5\.0"/u, "Service Worker cache должен быть обновлён вместе с UI");
 assert.match(sw, /NETWORK_FIRST_SHELL/u, "JS/CSS shell должен обновляться network-first, чтобы старый Mortar UI не застревал в кэше");
 assert.match(sw, /NETWORK_FIRST_SHELL\.test\(url\.pathname\)/u, "Network-first правило должно реально применяться к shell assets");
+assert.match(sw, /function keepCacheWriteAlive\(event, key, responsePromise\)/u, "Service Worker должен централизованно удерживать cache.put до завершения");
+assert.match(sw, /event\.waitUntil\(cacheUpdate\)/u, "Cache write обязан быть зарегистрирован через waitUntil");
+assert.match(sw, /keepCacheWriteAlive\(event, key, networkResponse\)/u, "Network-first shell обязан удерживать фоновое обновление кэша");
+assert.match(sw, /keepCacheWriteAlive\(event, request, networkResponse\)/u, "Обычный cache-first fallback также не должен терять cache.put при остановке worker");
+assert.match(sw, /\.catch\(\(\) => undefined\)/u, "Ошибка записи кэша не должна подменять успешный сетевой ответ");
 assert.match(config, /builderVersion: "1\.5\.0"/u, "Offline builder должен объявлять версию 1.5.0");
 
 console.log("Mortar UI contract checks passed.");
