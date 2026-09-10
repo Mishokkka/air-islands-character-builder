@@ -36,10 +36,12 @@ assert.match(source, /setHidden\(element, active\)/u, "Legacy Profession/Race cr
 assert.match(source, /Мортар не получает бесплатный General Talent при создании/u, "General Talents должны быть явно отделены от стартовых систем мортара");
 assert.match(source, /protocolCatalog\.append\(tile\)/u, "Operational Protocol cards должны физически переноситься из generic catalog в собственный каталог");
 assert.match(source, /if \(isMortarOnlyTalent\(tileTalentName\(tile\)\)\) tile\.remove\(\)/u, "Mortar-only entries не должны оставаться в General Talent catalog");
-assert.match(source, /OPERATIONAL_PROTOCOL_SET\.has\(name\)[\s\S]*row\.remove\(\)/u, "Выбранные Operational Protocols не должны дублироваться в General Talents");
+assert.match(source, /else if \(OPERATIONAL_PROTOCOL_SET\.has\(name\)\) \{\s*row\.remove\(\);\s*\}/u, "Выбранные Operational Protocols не должны дублироваться в General Talents");
 assert.match(source, /bodySlot\.replaceChildren\(row\)/u, "Механическое Тело должно выводиться отдельно от General Talents");
 assert.match(source, /row\.querySelector\("\.row-actions"\)\?\.setAttribute\("hidden", ""\)/u, "У постоянного Механического Тела не должно быть controls покупки/повышения");
 assert.match(source, /observer\.disconnect\(\)/u, "DOM-перестановки Mortar UI должны временно отключать MutationObserver");
+assert.doesNotMatch(source, /attributePointsTotal \?\? 13/u, "UI не должен дублировать базовый Mortar Attribute pool в fallback-логике");
+assert.doesNotMatch(source, /attributeMaximum \?\? Math\.min\(8, 6/u, "UI не должен дублировать лимиты Mortar Attributes в fallback-логике");
 
 assert.match(sw, /CACHE_NAME = "air-islands-character-builder-1\.5\.0"/u, "Service Worker cache должен быть обновлён вместе с UI");
 assert.match(sw, /NETWORK_FIRST_SHELL/u, "JS/CSS shell должен обновляться network-first, чтобы старый Mortar UI не застревал в кэше");
