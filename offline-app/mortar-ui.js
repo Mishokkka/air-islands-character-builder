@@ -9,14 +9,18 @@
   };
   let syncingProfession = false;
   let refreshQueued = false;
+  let observer = null;
+  const observerOptions = { childList: true, subtree: true, characterData: true };
 
-  const mortarOnlyTalent = name => [
+  const OPERATIONAL_PROTOCOLS = new Set([
     "Combat Protocol",
     "Bulwark Protocol",
     "Reconnaissance Protocol",
     "Engineering Protocol",
     "Mobility Protocol"
-  ].includes(name) || /^Recovery Protocol Rank [345]: \+1 /u.test(name);
+  ]);
+  const CALIBRATION_PATTERN = /^Recovery Protocol Rank ([345]): \+1 /u;
+  const mortarOnlyTalent = name => OPERATIONAL_PROTOCOLS.has(name) || CALIBRATION_PATTERN.test(name);
 
   const randomD6 = () => crypto.getRandomValues(new Uint32Array(1))[0] % 6 + 1;
   const isMortar = () => document.getElementById("kin")?.value === "mortar";
@@ -46,6 +50,18 @@
       .mortar-roll output { display: block; min-height: 2.2rem; padding: .45rem .6rem; border: 1px solid color-mix(in srgb, currentColor 18%, transparent); border-radius: 5px; font-weight: 700; }
       .mortar-note { margin: .65rem 0 0; opacity: .82; }
       .mortar-derived-summary { margin-top: .45rem; }
+      .mortar-protocol-section { margin: .35rem 0 1.2rem; }
+      .mortar-protocol-section > h3 { margin-top: 1rem; }
+      .mortar-body-talent { display: grid; gap: .45rem; }
+      .mortar-body-title { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .5rem 1rem; align-items: baseline; }
+      .mortar-body-title span { opacity: .72; font-size: .9em; }
+      .mortar-body-talent p { margin: 0; opacity: .9; }
+      .mortar-calibration-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; margin-top: .65rem; }
+      .mortar-calibration-tier { min-width: 0; padding: .65rem; border: 1px solid color-mix(in srgb, currentColor 16%, transparent); border-radius: 7px; }
+      .mortar-calibration-tier h4 { margin: 0 0 .55rem; }
+      .mortar-calibration-tier .catalog-grid { grid-template-columns: 1fr; }
+      .mortar-protocol-section .catalog-grid { margin-top: .55rem; }
+      @media (max-width: 900px) { .mortar-calibration-grid { grid-template-columns: 1fr; } }
       @media (max-width: 720px) { .mortar-roll-grid { grid-template-columns: 1fr; } }
     `;
     document.head.append(style);
@@ -88,6 +104,56 @@
       });
     }
     return card;
+  }
+
+  function ensureProtocolSection() {
+    const panel = document.getElementById("talentsPanel");
+    const kinTalent = document.getElementById("kinTalent");
+    if (!panel || !kinTalent) return null;
+
+    let anchor = document.getElementById("mortarKinTalentAnchor");
+    if (!anchor) {
+      anchor = document.createElement("span");
+      anchor.id = "mortarKinTalentAnchor";
+      anchor.hidden = true;
+      kinTalent.before(anchor);
+    }
+
+    let section = document.getElementById("mortarProtocolSection");
+    if (!section) {
+      section = document.createElement("section");
+      section.id = "mortarProtocolSection";
+      section.className = "mortar-protocol-section";
+      section.hidden = true;
+      section.innerHTML = `
+        <h3>Механическое Тело</h3>
+        <div id="mortarBodyTalent" class="readonly-card mortar-body-talent">
+          <div class="mortar-body-title"><strong>Механическое Тело</strong><span>Бесплатно · без рангов</span></div>
+          <p>Постоянные свойства механического организма: не нужны пища, вода, сон и дыхание; иммунитет к болезням; Armor Rating корпуса 2; режущий Damage уменьшается на 1 до брони, но не ниже 1.</p>
+          <p>REST, SLEEP и HEALING не восстанавливают физические повреждения мортара. Для восстановления используются REBOOT, MAINTENANCE и правила ремонта.</p>
+        </div>
+
+        <h3>Recovery Protocol</h3>
+        <p class="panel-help mortar-note">Основной протокол мортара. Rank 1 получен при пробуждении. Повышения покупаются за Base XP; Ranks 3–5 требуют выбрать повышение Attribute.</p>
+        <div id="mortarRecoverySlot"></div>
+
+        <h3>Operational Protocols</h3>
+        <p class="panel-help mortar-note">Первый Operational Protocol Rank 1 открывается на Recovery Protocol Rank 2 и выдаётся бесплатно. Следующий протокол можно открыть начиная с Recovery Rank 3, только после развития предыдущего Operational Protocol до Rank 3.</p>
+        <div id="mortarProtocolCatalog" class="catalog-grid catalog-grid-three" aria-label="Operational Protocols"></div>
+
+        <h3>Калибровка Recovery Protocol</h3>
+        <p class="panel-help mortar-note">На Recovery Protocol Ranks 3, 4 и 5 выберите ровно один Attribute, который увеличится на 1. Каждый выбор бесплатный и не является отдельным талантом персонажа.</p>
+        <div class="mortar-calibration-grid">
+          <section class="mortar-calibration-tier"><h4>Recovery Rank 3 · +1 Attribute</h4><div id="mortarCalibrationRank3" class="catalog-grid"></div></section>
+          <section class="mortar-calibration-tier"><h4>Recovery Rank 4 · +1 Attribute</h4><div id="mortarCalibrationRank4" class="catalog-grid"></div></section>
+          <section class="mortar-calibration-tier"><h4>Recovery Rank 5 · +1 Attribute</h4><div id="mortarCalibrationRank5" class="catalog-grid"></div></section>
+        </div>
+
+        <h3>Выбранные Operational Protocols</h3>
+        <div id="mortarProtocolSelections" class="selection-list"></div>`;
+      anchor.after(section);
+    }
+    return section;
   }
 
   function syncRollCard(active) {
@@ -141,40 +207,148 @@
   }
 
   function syncAge(active) {
-    setHidden(document.querySelector(".birth-date-row"), active);
+    const row = document.querySelector(".birth-date-row");
+    const yearLabel = document.getElementById("birthYearLabel");
+    setHidden(row, false);
     setHidden(document.getElementById("ageSummary"), active);
+    if (yearLabel) yearLabel.textContent = active ? "Год пробуждения" : "Год рождения";
+    if (row) row.setAttribute("aria-label", active ? "Дата пробуждения" : "Дата рождения");
+  }
+
+  function syncGvirlFocus() {
+    const kin = document.getElementById("kin")?.value;
+    const variant = document.getElementById("kinVariant")?.value;
+    setHidden(document.getElementById("kinFocusWrap"), !(kin === "human" && variant === "gvirl"));
+  }
+
+  function moveMortarCatalogEntries(active) {
+    const generalCatalog = document.getElementById("generalTalentCatalog");
+    const protocolCatalog = document.getElementById("mortarProtocolCatalog");
+    const generalSelections = document.getElementById("generalTalents");
+    const protocolSelections = document.getElementById("mortarProtocolSelections");
+    if (!generalCatalog || !protocolCatalog || !generalSelections || !protocolSelections) return;
+
+    protocolCatalog.replaceChildren();
+    protocolSelections.replaceChildren();
+    for (const tier of [3, 4, 5]) document.getElementById(`mortarCalibrationRank${tier}`)?.replaceChildren();
+
+    if (!active) {
+      for (const tile of generalCatalog.querySelectorAll(".catalog-item")) {
+        const name = tile.querySelector(".catalog-item-name")?.textContent.trim() ?? "";
+        if (mortarOnlyTalent(name)) setHidden(tile, true);
+      }
+      return;
+    }
+
+    for (const tile of [...generalCatalog.querySelectorAll(":scope > .catalog-item")]) {
+      const name = tile.querySelector(".catalog-item-name")?.textContent.trim() ?? "";
+      if (OPERATIONAL_PROTOCOLS.has(name)) {
+        tile.hidden = false;
+        protocolCatalog.append(tile);
+        continue;
+      }
+      const tier = Number(name.match(CALIBRATION_PATTERN)?.[1] ?? 0);
+      if (tier) {
+        tile.hidden = false;
+        document.getElementById(`mortarCalibrationRank${tier}`)?.append(tile);
+      }
+    }
+
+    for (const row of [...generalSelections.querySelectorAll(":scope > .selection-row")]) {
+      const name = row.querySelector(".catalog-hover")?.textContent.trim() ?? "";
+      if (OPERATIONAL_PROTOCOLS.has(name)) protocolSelections.append(row);
+    }
+
+    const ordinaryRows = generalSelections.querySelectorAll(":scope > .selection-row");
+    const oldPlaceholder = generalSelections.querySelector(":scope > .mortar-general-placeholder");
+    if (ordinaryRows.length) oldPlaceholder?.remove();
+    else if (!oldPlaceholder) {
+      const placeholder = document.createElement("div");
+      placeholder.className = "readonly-card mortar-general-placeholder";
+      placeholder.textContent = "Обычные General Talents не выбраны.";
+      generalSelections.append(placeholder);
+    }
+
+    if (!protocolSelections.querySelector(".selection-row")) {
+      const placeholder = document.createElement("div");
+      placeholder.className = "readonly-card";
+      placeholder.textContent = "Operational Protocol пока не выбран.";
+      protocolSelections.append(placeholder);
+    }
+  }
+
+  function constrainProtocolControls() {
+    const recoveryRank = Number(uiState.derived?.recoveryRank ?? 1);
+    const known = Array.isArray(uiState.derived?.operationalProtocols) ? uiState.derived.operationalProtocols : [];
+    const lastKnown = known.at(-1) ?? null;
+
+    for (const tile of document.querySelectorAll("#mortarProtocolCatalog .catalog-item")) {
+      const name = tile.querySelector(".catalog-item-name")?.textContent.trim() ?? "";
+      const current = known.find(entry => entry.name === name)?.rank ?? 0;
+      const add = tile.querySelector("[data-buy-xp]");
+      if (!add) continue;
+      let blocked = current >= 5;
+      let reason = current >= 5 ? "Достигнут Rank 5." : "";
+      if (!current && recoveryRank < 2) {
+        blocked = true;
+        reason = "Первый Operational Protocol открывается на Recovery Protocol Rank 2.";
+      } else if (!current && known.length && (recoveryRank < 3 || Number(lastKnown?.rank ?? 0) < 3)) {
+        blocked = true;
+        reason = recoveryRank < 3
+          ? "Дополнительные Operational Protocols открываются с Recovery Protocol Rank 3."
+          : `Сначала развейте ${lastKnown?.name ?? "предыдущий Operational Protocol"} до Rank 3.`;
+      }
+      add.disabled = blocked;
+      add.title = reason || (known.length ? "Повысить Operational Protocol." : "Выбрать первый Operational Protocol Rank 1 бесплатно.");
+    }
+
+    for (const tier of [3, 4, 5]) {
+      const container = document.getElementById(`mortarCalibrationRank${tier}`);
+      if (!container) continue;
+      const tiles = [...container.querySelectorAll(".catalog-item")];
+      const chosen = tiles.some(tile => tile.classList.contains("selected"));
+      for (const tile of tiles) {
+        const add = tile.querySelector("[data-buy-xp]");
+        if (!add) continue;
+        const selected = tile.classList.contains("selected");
+        const blocked = recoveryRank < tier || chosen || selected;
+        add.disabled = blocked;
+        add.title = recoveryRank < tier
+          ? `Выбор откроется на Recovery Protocol Rank ${tier}.`
+          : chosen
+            ? "Повышение Attribute для этого ранга Recovery Protocol уже выбрано."
+            : `Бесплатно повысить выбранный Attribute на 1 за Recovery Protocol Rank ${tier}.`;
+      }
+    }
   }
 
   function syncTalentSections(active) {
     const panel = document.getElementById("talentsPanel");
-    if (!panel) return;
+    const section = ensureProtocolSection();
+    if (!panel || !section) return;
+    const kinTalent = document.getElementById("kinTalent");
+    const anchor = document.getElementById("mortarKinTalentAnchor");
+    const recoverySlot = document.getElementById("mortarRecoverySlot");
+    const kinHeading = heading(panel, "Расовый талант");
     const initial = document.getElementById("initialPath")?.closest("label");
     const firstHeading = heading(panel, "Первый Professional Path");
     const ageHeading = heading(panel, "Возрастные очки талантов");
     const pathHeading = heading(panel, "Professional Path");
     const paths = document.getElementById("paths");
     const pathHelp = pathHeading?.nextElementSibling?.matches(".panel-help") ? pathHeading.nextElementSibling : null;
+
+    setHidden(kinHeading, active);
     for (const element of [firstHeading, initial, ageHeading, document.getElementById("ageTalentSummary"), document.getElementById("ageTalentLedger"), document.getElementById("undoAgeTalent"), pathHeading, pathHelp, paths]) setHidden(element, active);
+    setHidden(section, !active);
 
-    let note = document.getElementById("mortarTalentHelp");
-    if (!note) {
-      note = document.createElement("p");
-      note.id = "mortarTalentHelp";
-      note.className = "panel-help mortar-note";
-      note.textContent = "Operational Protocols находятся в каталоге ниже. Первый Operational Protocol Rank 1 после Recovery Protocol Rank 2 бесплатный. На Recovery Protocol Ranks 3, 4 и 5 выберите соответствующий бесплатный пункт +1 Attribute.";
-      const catalog = document.getElementById("generalTalentCatalog");
-      catalog?.before(note);
+    if (active) {
+      if (kinTalent && recoverySlot && kinTalent.parentElement !== recoverySlot) recoverySlot.append(kinTalent);
+    } else if (kinTalent && anchor && kinTalent.previousElementSibling !== anchor) {
+      anchor.after(kinTalent);
     }
-    setHidden(note, !active);
 
-    for (const tile of panel.querySelectorAll("#generalTalentCatalog .catalog-item")) {
-      const name = tile.querySelector(".catalog-item-name")?.textContent.trim() ?? "";
-      if (mortarOnlyTalent(name)) setHidden(tile, !active);
-    }
-    for (const row of panel.querySelectorAll("#generalTalents .selection-row")) {
-      const name = row.querySelector(".catalog-hover")?.textContent.trim() ?? "";
-      if (mortarOnlyTalent(name)) setHidden(row, !active);
-    }
+    moveMortarCatalogEntries(active);
+    if (active) constrainProtocolControls();
   }
 
   function syncSkills(active) {
@@ -220,15 +394,22 @@
   }
 
   function refresh() {
-    ensureStyle();
-    const active = isMortar();
-    syncRollCard(active);
-    syncProfession(active);
-    syncAge(active);
-    syncTalentSections(active);
-    syncSkills(active);
-    syncDerived(active);
-    syncSpells(active);
+    const observing = Boolean(observer);
+    if (observing) observer.disconnect();
+    try {
+      ensureStyle();
+      const active = isMortar();
+      syncRollCard(active);
+      syncProfession(active);
+      syncAge(active);
+      syncTalentSections(active);
+      syncSkills(active);
+      syncDerived(active);
+      syncSpells(active);
+      syncGvirlFocus();
+    } finally {
+      if (observing) observer.observe(document.body, observerOptions);
+    }
   }
 
   function queueRefresh() {
@@ -243,8 +424,10 @@
   document.addEventListener("DOMContentLoaded", () => {
     ensureStyle();
     document.getElementById("kin")?.addEventListener("change", queueRefresh);
+    document.getElementById("kinVariant")?.addEventListener("change", queueRefresh);
     document.getElementById("resetDraft")?.addEventListener("click", () => setTimeout(queueRefresh, 0));
-    new MutationObserver(queueRefresh).observe(document.body, { childList: true, subtree: true, characterData: true });
+    observer = new MutationObserver(queueRefresh);
+    observer.observe(document.body, observerOptions);
     queueRefresh();
   });
 })();
