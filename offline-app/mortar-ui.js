@@ -13,6 +13,7 @@
   let catalogRenderMarker = null;
   const observerOptions = { childList: true, subtree: true, characterData: true };
 
+  const MORTAR_BODY_TALENT = "Механическое Тело";
   const OPERATIONAL_PROTOCOLS = new Set([
     "Combat Protocol",
     "Bulwark Protocol",
@@ -21,7 +22,7 @@
     "Mobility Protocol"
   ]);
   const CALIBRATION_PATTERN = /^Recovery Protocol Rank ([345]): \+1 /u;
-  const mortarOnlyTalent = name => OPERATIONAL_PROTOCOLS.has(name) || CALIBRATION_PATTERN.test(name);
+  const mortarOnlyTalent = name => name === MORTAR_BODY_TALENT || OPERATIONAL_PROTOCOLS.has(name) || CALIBRATION_PATTERN.test(name);
 
   const randomD6 = () => crypto.getRandomValues(new Uint32Array(1))[0] % 6 + 1;
   const isMortar = () => document.getElementById("kin")?.value === "mortar";
@@ -253,6 +254,10 @@
 
     for (const tile of [...generalCatalog.querySelectorAll(":scope > .catalog-item")]) {
       const name = tile.querySelector(".catalog-item-name")?.textContent.trim() ?? "";
+      if (name === MORTAR_BODY_TALENT) {
+        tile.hidden = true;
+        continue;
+      }
       if (OPERATIONAL_PROTOCOLS.has(name)) {
         tile.hidden = false;
         protocolCatalog.append(tile);
@@ -267,11 +272,15 @@
 
     for (const row of [...generalSelections.querySelectorAll(":scope > .selection-row")]) {
       const name = row.querySelector(".catalog-hover")?.textContent.trim() ?? "";
+      if (name === MORTAR_BODY_TALENT) {
+        row.hidden = true;
+        continue;
+      }
       if (OPERATIONAL_PROTOCOLS.has(name)) protocolSelections.append(row);
     }
 
     for (const placeholder of [...generalSelections.querySelectorAll(":scope > .readonly-card")]) placeholder.remove();
-    const ordinaryRows = generalSelections.querySelectorAll(":scope > .selection-row");
+    const ordinaryRows = [...generalSelections.querySelectorAll(":scope > .selection-row")].filter(row => !row.hidden);
     if (!ordinaryRows.length) {
       const placeholder = document.createElement("div");
       placeholder.className = "readonly-card mortar-general-placeholder";
