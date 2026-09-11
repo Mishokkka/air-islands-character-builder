@@ -14,7 +14,7 @@ const packageJson = JSON.parse(fs.readFileSync(path.join(root, "package.json"), 
 fs.rmSync(output, { recursive: true, force: true });
 fs.mkdirSync(path.join(output, "rules"), { recursive: true });
 
-for (const filename of ["app.js", "mortar-ui.js", "core.bundle.js", "zip.bundle.js", "styles.css", "sw.js"]) {
+for (const filename of ["app.js", "mortar-ui.js", "mortar-v2-ui.js", "core.bundle.js", "zip.bundle.js", "styles.css", "sw.js"]) {
   fs.copyFileSync(path.join(appDir, filename), path.join(output, filename));
 }
 
@@ -27,7 +27,7 @@ fs.writeFileSync(path.join(output, "config.js"), `globalThis.AIR_ISLANDS_CONFIG 
   builderVersion: packageJson.version,
   rulesManifestUrl: "./rules/manifest.json",
   remoteCheckTimeoutMs: 8000
-}, null, 2)};\n`, "utf8");
+}, null, 2)};\n\nconst mortarV2Ui = document.createElement("script");\nmortarV2Ui.src = "./mortar-v2-ui.js";\nmortarV2Ui.defer = true;\ndocument.head.append(mortarV2Ui);\n`, "utf8");
 
 const innerManifest = {
   format: "air-islands-rules-package",
