@@ -1,4 +1,4 @@
-const CACHE_NAME = "air-islands-character-builder-1.5.0";
+const CACHE_NAME = "air-islands-character-builder-1.5.1";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -7,7 +7,8 @@ const APP_SHELL = [
   "./core.bundle.js",
   "./zip.bundle.js",
   "./app.js",
-  "./mortar-ui.js"
+  "./mortar-ui.js",
+  "./mortar-v2-ui.js"
 ];
 const NETWORK_FIRST_SHELL = /\.(?:html|css|js)$/iu;
 
