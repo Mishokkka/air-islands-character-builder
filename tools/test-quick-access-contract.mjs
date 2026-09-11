@@ -172,13 +172,15 @@ test("base core copies persist numeric talent ranks and send rumor text plus hid
     assert.doesNotMatch(profileSource, /name:\s*String\(entry\?\.(?:name|characterName|source)/);
   }
 
-  const wrapper = await readFile(new URL("../foundry-module/scripts/core.mjs", import.meta.url), "utf8");
-  assert.match(wrapper, /from "\.\/core-base\.mjs"/);
-  assert.match(wrapper, /base\.sanitizeEmbeddedItem/);
+  const runtimeWrapper = await readFile(new URL("../foundry-module/scripts/core.mjs", import.meta.url), "utf8");
+  const mortarWrapper = await readFile(new URL("../foundry-module/scripts/mortar-core.mjs", import.meta.url), "utf8");
+  assert.match(runtimeWrapper, /from "\.\/mortar-core\.mjs"/);
+  assert.match(mortarWrapper, /from "\.\/core-base\.mjs"/);
+  assert.match(mortarWrapper, /base\.sanitizeEmbeddedItem/);
 });
 
-test("Foundry manifest loads Quick Access bridge only through main.mjs and registers Mortar migration separately", async () => {
+test("Foundry manifest keeps Quick Access bridge isolated and registers Mortar support modules separately", async () => {
   const manifest = JSON.parse(await readFile(new URL("../foundry-module/module.json", import.meta.url), "utf8"));
-  assert.deepEqual(manifest.esmodules, ["scripts/main.mjs", "scripts/mortar-migration.mjs"]);
+  assert.deepEqual(manifest.esmodules, ["scripts/main.mjs", "scripts/mortar-migration.mjs", "scripts/mortar-post-import.mjs"]);
   assert.equal(manifest.esmodules.includes("scripts/quick-access-bridge.mjs"), false);
 });
