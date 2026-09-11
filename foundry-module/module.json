@@ -2,7 +2,7 @@
   "id": "air-islands-character-importer",
   "title": "Air Islands Character Importer",
   "description": "Импорт автономно созданных персонажей Воздушных Островов в Forbidden Lands. Совместимая кодовая база Foundry VTT 13/14.",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "authors": [
     {
       "name": "Хозяин"
@@ -27,7 +27,8 @@
   },
   "esmodules": [
     "scripts/main.mjs",
-    "scripts/mortar-migration.mjs"
+    "scripts/mortar-migration.mjs",
+    "scripts/mortar-post-import.mjs"
   ],
   "styles": [
     "styles/importer.css"
