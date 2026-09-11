@@ -75,10 +75,13 @@
     });
   }
 
-  document.addEventListener("DOMContentLoaded", () => {
+  function start() {
     refresh();
     document.getElementById("kin")?.addEventListener("change", queueRefresh);
     observer = new MutationObserver(queueRefresh);
     observer.observe(document.body, { childList: true, subtree: true });
-  });
+  }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start, { once: true });
+  else start();
 })();
