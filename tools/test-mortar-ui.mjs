@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..");
 const source = fs.readFileSync(path.join(root, "offline-app/mortar-ui.js"), "utf8");
+const postCreationUi = fs.readFileSync(path.join(root, "offline-app/mortar-v2-ui.js"), "utf8");
 const html = fs.readFileSync(path.join(root, "offline-app/index.html"), "utf8");
 const styles = fs.readFileSync(path.join(root, "offline-app/styles.css"), "utf8");
 const sw = fs.readFileSync(path.join(root, "offline-app/sw.js"), "utf8");
@@ -43,7 +44,18 @@ assert.match(source, /observer\.disconnect\(\)/u, "DOM-перестановки 
 assert.doesNotMatch(source, /attributePointsTotal \?\? 13/u, "UI не должен дублировать базовый Mortar Attribute pool в fallback-логике");
 assert.doesNotMatch(source, /attributeMaximum \?\? Math\.min\(8, 6/u, "UI не должен дублировать лимиты Mortar Attributes в fallback-логике");
 
-assert.match(sw, /CACHE_NAME = "air-islands-character-builder-1\.5\.0"/u, "Service Worker cache должен быть обновлён вместе с UI");
+assert.match(postCreationUi, /#mortarCreationCard \{ display: none !important; \}/u, "Старые D2/D66 controls должны быть полностью скрыты");
+assert.match(postCreationUi, /\.wizard-steps \{ display: grid !important; grid-template-columns: 1fr !important/u, "Все этапы должны постоянно отображаться вертикальным списком");
+assert.match(postCreationUi, /\.wizard-step, \.wizard-step\[hidden\] \{ display: grid !important/u, "Этапы wizard не должны исчезать при переходах");
+assert.match(postCreationUi, /Reputation «Убийца» не определяется в билдере/u);
+assert.match(postCreationUi, /После импорта в Foundry выполняется D2/u);
+assert.match(postCreationUi, /Дефект также определяется уже в Foundry броском D100/u);
+assert.match(postCreationUi, /state\.killerRoll = null/u);
+assert.match(postCreationUi, /state\.defectRoll = null/u);
+assert.match(postCreationUi, /document\.readyState === "loading"/u, "Динамически загруженный helper должен запускаться и после DOMContentLoaded");
+
+assert.match(sw, /CACHE_NAME = "air-islands-character-builder-1\.5\.1"/u, "Service Worker cache должен быть обновлён вместе с UI");
+assert.match(sw, /"\.\/mortar-v2-ui\.js"/u, "Новый Mortar UI helper должен входить в offline shell");
 assert.match(sw, /NETWORK_FIRST_SHELL/u, "JS/CSS shell должен обновляться network-first, чтобы старый Mortar UI не застревал в кэше");
 assert.match(sw, /NETWORK_FIRST_SHELL\.test\(url\.pathname\)/u, "Network-first правило должно реально применяться к shell assets");
 assert.match(sw, /function keepCacheWriteAlive\(event, key, responsePromise\)/u, "Service Worker должен централизованно удерживать cache.put до завершения");
@@ -51,6 +63,7 @@ assert.match(sw, /event\.waitUntil\(cacheUpdate\)/u, "Cache write обязан �
 assert.match(sw, /keepCacheWriteAlive\(event, key, networkResponse\)/u, "Network-first shell обязан удерживать фоновое обновление кэша");
 assert.match(sw, /keepCacheWriteAlive\(event, request, networkResponse\)/u, "Обычный cache-first fallback также не должен терять cache.put при остановке worker");
 assert.match(sw, /\.catch\(\(\) => undefined\)/u, "Ошибка записи кэша не должна подменять успешный сетевой ответ");
-assert.match(config, /builderVersion: "1\.5\.0"/u, "Offline builder должен объявлять версию 1.5.0");
+assert.match(config, /builderVersion: "1\.5\.1"/u, "Offline builder должен объявлять версию 1.5.1");
+assert.match(config, /mortarV2Ui\.src = "\.\/mortar-v2-ui\.js"/u, "Offline config должен загружать новый Mortar UI helper");
 
 console.log("Mortar UI contract checks passed.");
