@@ -1,7 +1,7 @@
 {
   "name": "air-islands-character-builder",
   "private": true,
-  "version": "1.5.0",
+  "version": "1.5.1",
   "type": "module",
   "scripts": {
     "build:rules": "node tools/build-rules.mjs",
@@ -10,8 +10,9 @@
     "test:engine": "node tools/test-engine.mjs",
     "test:mortar": "node tools/test-mortar.mjs",
     "test:mortar-ui": "node tools/test-mortar-ui.mjs",
+    "test:mortar-post-import": "node tools/test-mortar-post-import.mjs",
     "test:app": "node tools/test-offline-app.mjs",
-    "test": "npm run test:engine && npm run test:mortar && npm run test:mortar-ui && npm run test:zip && npm run test:app && npm run test:remote && npm run test:compat && npm run test:quick-access",
+    "test": "npm run test:engine && npm run test:mortar && npm run test:mortar-ui && npm run test:mortar-post-import && npm run test:zip && npm run test:app && npm run test:remote && npm run test:compat && npm run test:quick-access",
     "build": "npm run build:rules && npm run build:samples && npm run build:browser && npm test",
     "build:samples": "node tools/make-sample.mjs",
     "test:zip": "node tools/test-zip.mjs",
