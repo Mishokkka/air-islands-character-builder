@@ -1,5 +1,7 @@
 const MODULE_ID = "air-islands-character-importer";
 const timers = new Map();
+const inFlight = new Map();
+const rerunRequested = new Set();
 let bodyTemplatePromise = null;
 
 const STARTER_ITEMS = [
@@ -24,7 +26,7 @@ const STARTER_ITEMS = [
         quantity: 1,
         cost: "0",
         part: "other",
-        features: "<p>Металлическое тело мортара, все еще уязвимое, пусть и не такое мягкое, как плоть.&nbsp;<br>Может терять качество как и обычный доспех, может быть починено во время MAITENANCE с помощью Обычных Запчастей.</p>",
+        features: "<p>Встроенный корпус мортара даёт Armor Rating 2. Пока активен пассивный IMPACT RESPONSE Bulwark Protocol, Armor Rating врождённого доспеха равен 4. DEFENSIVE PRIORITY может защитить врождённый доспех от потери качества при конкретной атаке.</p>",
         supply: "",
         weight: "none"
       },
@@ -102,15 +104,43 @@ function isImportedMortar(actor) {
   return actor?.documentName === "Actor" && actor.flags?.[MODULE_ID]?.profile?.identity?.kinId === "mortar";
 }
 
+function actorKey(actor) {
+  return actor?.uuid ?? actor?.id ?? null;
+}
+
 function schedule(actor) {
   if (!game.user?.isGM || !isImportedMortar(actor)) return;
-  const key = actor.uuid ?? actor.id;
+  const key = actorKey(actor);
+  if (!key) return;
+
+  if (inFlight.has(key)) {
+    rerunRequested.add(key);
+    return;
+  }
+
   const previous = timers.get(key);
   if (previous) clearTimeout(previous);
   timers.set(key, setTimeout(() => {
     timers.delete(key);
-    finalizeMortar(actor).catch(error => console.error(`${MODULE_ID} | Mortar post-import failed`, error));
+    runFinalizer(actor, key).catch(error => console.error(`${MODULE_ID} | Mortar post-import failed`, error));
   }, 250));
+}
+
+async function runFinalizer(actor, key = actorKey(actor)) {
+  if (!key) return;
+  const current = inFlight.get(key);
+  if (current) {
+    rerunRequested.add(key);
+    return current;
+  }
+
+  const promise = finalizeMortar(actor)
+    .finally(() => {
+      inFlight.delete(key);
+      if (rerunRequested.delete(key)) schedule(actor);
+    });
+  inFlight.set(key, promise);
+  return promise;
 }
 
 Hooks.once("ready", () => {
@@ -194,7 +224,7 @@ async function resolvePostCreationRolls(actor) {
   } else {
     await defectRoll.toMessage({
       speaker: ChatMessage.getSpeaker({ actor }),
-      flavor: "Мортар: дефект (D100). Сверьте результат с таблицей дефектов."
+      flavor: "Мортар: обязательный дефект (D100). Сверьте результат с таблицей дефектов."
     });
   }
 
