@@ -95,6 +95,13 @@ try {
   assert.equal(exported.valid, true);
   assert.equal(exported.actor, sample.identity.name);
   await shot("identity-desktop");
+  for (const width of [1024,768,390,320]) {
+    await viewport(width,1000);await pause(70);
+    assert.equal(await evaluate('document.documentElement.scrollWidth<=innerWidth'),true,`Identity overflow at ${width}`);
+    assert.equal(await evaluate(`(()=>[...document.querySelectorAll('#identityPanel input, #identityPanel select, #originPanel input, #originPanel select')].filter(field=>field.getClientRects().length).every(field=>{const rect=field.getBoundingClientRect();return rect.left>=0 && rect.right<=innerWidth+1}))()`),true,`Identity fields outside viewport at ${width}`);
+    if(width===390)await shot('identity-mobile');
+  }
+  await viewport(1440);await evaluate('window.scrollTo(0,0)');
   await evaluate('document.querySelector(".wizard-step[data-step=attributes]").click()');
   const focus = await evaluate(`(()=>{const f=document.querySelector('#attributes input');f.focus();f.value=String(Number(f.value)-1);f.dispatchEvent(new Event('input',{bubbles:true}));return {connected:f.isConnected,focused:document.activeElement===f}})()`);
   assert.deepEqual(focus, { connected: true, focused: true });
@@ -146,6 +153,9 @@ try {
   if (await evaluate('document.querySelector("#editorDialog").open')) await evaluate('document.querySelector("#dialogAccept").click()');
   await pause(150);
   assert.equal(await evaluate('document.querySelector("#profession").disabled'), true);
+  assert.equal(await evaluate('document.querySelector("#professionGroup").hidden && document.querySelector("#ageBadge").hidden'),true);
+  assert.equal(await evaluate('document.querySelector("#birthDateTitle").textContent'), 'Дата пробуждения');
+  await shot('identity-mortar-desktop');
   assert.equal(await evaluate('document.querySelectorAll("#mortarProtocolCatalog .catalog-item").length'), 6);
   const mutations = await evaluate("new Promise(resolve=>{let n=0;const o=new MutationObserver(x=>n+=x.length);o.observe(document.body,{childList:true,subtree:true,characterData:true});setTimeout(()=>{o.disconnect();resolve(n)},500)})");
   assert.equal(mutations, 0, "Idle Mortar must not mutate DOM");

@@ -453,6 +453,7 @@ details[open] > summary {
   border-bottom: 1px solid var(--border);
   font-size: 1.3rem;
 }
+.panel[data-step=identity],
 .panel[data-step=attributes],
 .panel[data-step=skills],
 .panel[data-step=talents],
@@ -2158,6 +2159,311 @@ td input {
   display: grid;
   grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr);
   gap: 16px;
+}
+
+/* Identity: one dossier with nearby references, then a separate world background. */
+.identity-sheet {
+  background: linear-gradient(125deg, #242b2c 0%, var(--paper) 46%);
+}
+.identity-overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 250px;
+  gap: 24px 28px;
+}
+.identity-main {
+  grid-column: 1;
+  grid-row: 1;
+}
+.identity-main,
+.identity-choice,
+.origin-field-group {
+  min-width: 0;
+}
+.identity-name > span {
+  color: var(--accent);
+  font-size: .68rem;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+}
+.identity-name input {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.55rem;
+  padding: 10px 13px;
+  font-weight: 400;
+  min-height: 52px;
+}
+.identity-choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+  margin-top: 22px;
+  align-items: start;
+}
+.identity-choices:has(#professionGroup[hidden]) {
+  grid-template-columns: minmax(0, 1fr);
+}
+.identity-choice {
+  display: grid;
+  gap: 12px;
+}
+.kin-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.kin-options:not(:has(label:not([hidden]))) {
+  display: none;
+}
+.kin-options:has(#kinFocusWrap[hidden]) {
+  grid-template-columns: minmax(0, 1fr);
+}
+.kin-options label {
+  font-size: .73rem;
+  color: var(--muted);
+}
+.identity-reference {
+  font-size: .75rem;
+  color: var(--muted);
+}
+.identity-reference summary {
+  color: var(--accent);
+}
+.identity-reference p {
+  margin: 10px 0 0;
+  line-height: 1.65;
+}
+.identity-field-hint {
+  font-size: .74rem;
+  line-height: 1.6;
+  color: var(--muted);
+  margin: 0;
+}
+.identity-appearance {
+  grid-column: 2;
+  grid-row: 1;
+  border-left: 1px solid var(--border);
+  padding-left: 24px;
+  align-self: start;
+  min-width: 0;
+}
+.appearance-heading h3 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 400;
+  font-size: 1.16rem;
+  margin: 0;
+}
+.appearance-heading p {
+  color: var(--muted);
+  font-size: .72rem;
+  margin: 3px 0 15px;
+}
+.identity-appearance .asset-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.identity-appearance .asset-card {
+  display: grid;
+  grid-template-rows: auto 124px auto auto;
+  align-items: start;
+  gap: 7px;
+  min-width: 0;
+}
+.identity-appearance .asset-card h4 {
+  font-size: .74rem;
+  font-weight: 400;
+  margin: 0;
+  color: var(--muted);
+  text-align: center;
+}
+.identity-appearance .asset-preview {
+  width: 100%;
+  max-width: 106px;
+  height: 124px;
+  align-self: center;
+  background: radial-gradient(ellipse at 50% 30%, #36392e55, transparent 75%), var(--paper-3);
+  border-color: #6a6756;
+}
+.identity-appearance .token-preview {
+  max-width: 100px;
+  height: auto;
+  aspect-ratio: 1;
+}
+.asset-placeholder {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  text-align: center;
+  font-size: .61rem;
+  padding: 6px;
+}
+.asset-placeholder::before {
+  content: "✧";
+  color: var(--accent);
+  font-size: 28px;
+  line-height: 1;
+}
+.identity-appearance .asset-actions {
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.identity-appearance .asset-actions > * {
+  font-size: .73rem;
+  padding: 6px 9px;
+  width: 100%;
+  text-align: center;
+}
+.identity-appearance .asset-actions button:disabled,
+.identity-appearance .asset-meta:empty {
+  display: none;
+}
+.identity-appearance .asset-meta {
+  margin: 0;
+  font-size: .65rem;
+}
+#assetFormats {
+  font-size: .66rem;
+  margin-top: 8px;
+  text-align: center;
+}
+.identity-parameters {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.identity-parameter {
+  position: relative;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--paper-3);
+  padding: 16px;
+}
+.identity-parameter-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 16px;
+  min-height: 25px;
+}
+.identity-parameter-heading h3,
+.identity-section-heading h3 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.2rem;
+  font-weight: 400;
+  margin: 0;
+}
+.identity-badge {
+  font-size: .67rem;
+  color: var(--accent);
+  padding: 3px 8px;
+  border: 1px solid #64583f;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+.identity-parameter label {
+  font-size: .73rem;
+}
+.identity-parameter .summary-line {
+  font-size: .72rem;
+  line-height: 1.6;
+  margin: 12px 0 0;
+}
+.identity-parameter .birth-date-row {
+  grid-template-columns: minmax(0, .8fr) minmax(0, 1.4fr) minmax(0, .6fr);
+  gap: 8px;
+}
+.xp-allocation {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 18px;
+}
+.xp-allocation-result {
+  border-left: 1px solid var(--border);
+  padding-left: 18px;
+  display: grid;
+  align-content: start;
+  gap: 3px;
+}
+.xp-allocation-result > span {
+  color: var(--muted);
+  font-size: .73rem;
+}
+.xp-allocation-result strong {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.65rem;
+  font-weight: 400;
+  color: var(--accent);
+}
+.identity-parameter .field-help {
+  position: static;
+  flex: none;
+}
+.identity-parameter .field-help::after {
+  inset: 78px 14px auto;
+  width: auto;
+}
+.identity-section-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px 20px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.identity-section-heading p {
+  color: var(--muted);
+  font-size: .73rem;
+  margin: 0;
+}
+.origin-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+.origin-field-group {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+}
+.identity-origin .origin-details > summary {
+  font-size: .76rem;
+}
+@media(max-width:1000px) {
+  .identity-overview { grid-template-columns: minmax(0, 1fr) 210px; gap: 20px; }
+  .identity-appearance { padding-left: 16px; }
+  .identity-choices { gap: 14px; }
+  .identity-parameters { grid-template-columns: minmax(0, 1fr); }
+  .origin-fields { gap: 14px; }
+}
+@media(max-width:900px) {
+  .identity-overview { grid-template-columns: minmax(0, 1fr); }
+  .identity-appearance { grid-column: 1; grid-row: 3; border-left: 0; border-top: 1px solid var(--border); padding: 16px 0 0; display: grid; grid-template-columns: minmax(100px, .6fr) minmax(0, 1fr); gap: 0 20px; }
+  .identity-appearance #assetFormats { grid-column: 2; }
+  .identity-appearance .asset-card { grid-template-rows: auto 100px auto auto; }
+  .identity-appearance .asset-preview { height: 100px; max-width: 80px; }
+  .identity-appearance .token-preview { height: auto; }
+  .origin-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media(max-width:540px) {
+  .identity-name input { font-size: 1.3rem; }
+  .identity-choices { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .identity-appearance { grid-template-columns: 1fr 2fr; gap: 0 12px; }
+  .identity-appearance .asset-grid { gap: 10px; }
+  .appearance-heading h3 { font-size: 1rem; }
+  .appearance-heading p { font-size: .67rem; }
+  .identity-parameter { padding: 13px; }
+  .identity-parameter input, .identity-parameter select { padding-inline: 7px; font-size: .82rem; }
+  .identity-parameter .birth-date-row { grid-template-columns: minmax(0, .9fr) minmax(0, 1.3fr) minmax(0, .65fr); gap: 6px; }
+  .identity-parameter .label-line { gap: 4px; font-size: .69rem; }
+  .xp-allocation { gap: 12px; }
+  .xp-allocation-result { padding-left: 12px; }
+  .xp-allocation-result > span { font-size: .69rem; }
+  .origin-fields { grid-template-columns: minmax(0, 1fr); gap: 22px; }
+  .origin-field-group + .origin-field-group { border-top: 1px solid var(--border); padding-top: 18px; }
 }
 @media (max-width: 720px) {
   .foundation-cards {

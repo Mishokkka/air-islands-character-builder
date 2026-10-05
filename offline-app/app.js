@@ -79,7 +79,7 @@
     "originDetail", "citizenship", "religionDetail", "birthYear", "birthMonth", "birthDay", "ageSummary", "attributeSummary", "attributes", "skillSummary",
     "skillsBody", "kinTalent", "initialPath", "ageTalentSummary", "ageTalentLedger", "undoAgeTalent", "paths",
     "generalTalentCatalog", "generalTalents", "professionPathCatalog", "spellSummary", "spellCatalog", "spells", "catalogTooltip", "purchaseMenu",
-    "languageSummary", "languageSelect", "languageLevel", "languageLore", "identityLore",
+    "languageSummary", "languageSelect", "languageLevel", "languageLore", "identityLore", "kinLore", "professionLore", "ageBadge", "baseXpBudgetValue", "assetFormats",
     "languageNative", "addLanguage", "languages", "reputationTotal", "baseXp", "baseXpAllowance", "xpBudget", "spentXp", "remainingXp",
     "buyReputation", "undoReputation", "undoXp", "xpLedger", "reputationEntries", "addReputationEntry", "bioConcept", "bioAppearance", "bioBackground",
     "bioFamily", "bioMotivation", "bioPride", "bioDarkSecret", "bioConnections", "bioPublicNote", "equipmentRequest",
@@ -707,9 +707,9 @@
     const profession = index.professions.get(state.identity.professionId);
     const origin = index.origins.get(state.identity.originId);
     const religion = index.religions.get(state.identity.religionId);
+    el.kinLore.textContent = kin?.summary || 'Справка отсутствует.';
+    el.professionLore.textContent = profession?.summary || 'Справка отсутствует.';
     const cards = [
-      ["Раса", kin?.name, kin?.summary],
-      ["Профессия", profession?.name, profession?.summary],
       ["Происхождение", origin?.name, origin?.summary],
       ["Вера", religion?.name, religion?.summary]
     ].filter(([, name, summary]) => name || summary);
@@ -1173,6 +1173,7 @@
     const accept = (settings.allowedImageTypes?.length ? settings.allowedImageTypes : defaultAllowedImageTypes).join(",");
     el.portraitFile.accept = accept;
     el.tokenFile.accept = accept;
+    el.assetFormats.textContent = `${[...allowedImageTypes()].map(type => type.replace('image/', '').toUpperCase()).join(', ')} · до ${rules.builderSettings?.maxAssetSizeMb ?? 12} МБ`;
     const maxXp = settings.maximumBaseXp == null ? NaN : Number(settings.maximumBaseXp);
     el.baseXp.max = Number.isFinite(maxXp) && maxXp >= 0 ? String(maxXp) : "";
   }
@@ -1447,7 +1448,8 @@
     const kin = index.kin.get(state.identity.kinId);
     const category = core.ageCategoryFor(kin, age);
     const categoryName = rules.ageCategories[category]?.name ?? "не определён";
-    el.ageSummary.textContent = `Возраст на ${formatDate(rules.campaignDate)}: ${age ?? "?"}. Категория: ${categoryName}. Допустимый диапазон: ${kin?.minimumAge ?? "?"}–${kin?.maximumAge ?? "?"}.`;
+    el.ageBadge.textContent = age == null ? 'Укажите дату' : `${age} лет · ${categoryName}`;
+    el.ageSummary.textContent = `На ${formatDate(rules.campaignDate)}. Допустимый возраст: ${kin?.minimumAge ?? "?"}–${kin?.maximumAge ?? "?"} лет.`;
   }
 
   function renderAttributes() {
@@ -1969,7 +1971,8 @@
   function renderProgress(replay) {
     el.reputationTotal.value = replay.final.reputation;
     el.baseXp.value = state.experience.baseTotal;
-    el.baseXpAllowance.textContent = `На развитие доступно 20%: ${replay.final.xpBudget} XP.`;
+    el.baseXpBudgetValue.textContent = `${replay.final.xpBudget} XP`;
+    el.baseXpAllowance.textContent = `Потрачено ${replay.final.xpSpent} XP · осталось ${replay.final.xpRemaining} XP.`;
     el.xpBudget.value = replay.final.xpBudget;
     el.spentXp.value = replay.final.xpSpent;
     el.remainingXp.value = replay.final.xpRemaining;

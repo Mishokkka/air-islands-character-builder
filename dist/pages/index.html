@@ -26,57 +26,91 @@
 
     <main class="layout" id="wizardContent">
       <div class="workspace-heading"><label class="mobile-step">Раздел персонажа<select id="mobileStep"></select></label><span class="eyebrow" id="pageEyebrow">Досье пилигрима</span><h2 id="pageTitle">Основа</h2><div id="activeResources" aria-live="polite"></div></div>
-      <section class="panel" id="identityPanel" data-step="identity">
-        <h2>Основа</h2>
-        <div class="form-grid">
-          <label class="wide">Имя<input id="name" type="text" autocomplete="off"></label>
-          <label>Раса<select id="kin"></select></label>
-          <label id="kinVariantWrap">Вариант<select id="kinVariant"></select></label>
-          <label id="kinFocusWrap" hidden="">Фокус гвирла<select id="kinFocus"></select></label>
-          <label>Профессия<select id="profession"></select></label>
-
-
-
-
-
-          <div class="birth-date-row wide" role="group" aria-label="Дата рождения">
-            <label><span id="birthYearLabel">Год рождения</span><input id="birthYear" type="number" step="1"></label>
-            <label>Трилуние<select id="birthMonth"></select></label>
-            <label>День<input id="birthDay" type="number" min="1" max="30" step="1"></label>
+      <section class="panel identity-sheet" id="identityPanel" data-step="identity" aria-label="Личность персонажа">
+        <div class="identity-overview">
+          <div class="identity-main">
+            <label class="identity-name"><span>Имя персонажа</span><input id="name" type="text" autocomplete="off" placeholder="Имя или прозвище"></label>
+            <div class="identity-choices">
+              <section class="identity-choice" id="kinGroup" aria-label="Раса и её особенности">
+                <label>Раса<select id="kin"></select></label>
+                <div class="kin-options">
+                  <label id="kinVariantWrap">Вариант<select id="kinVariant"></select></label>
+                  <label id="kinFocusWrap" hidden="">Фокус гвирла<select id="kinFocus"></select></label>
+                </div>
+                <details class="identity-reference"><summary>О выбранной расе</summary><p id="kinLore"></p></details>
+              </section>
+              <section class="identity-choice" id="professionGroup" aria-label="Профессия персонажа">
+                <label>Профессия<select id="profession"></select></label>
+                <p class="identity-field-hint">Определяет профессиональные навыки и доступные пути.</p>
+                <details class="identity-reference"><summary>О выбранной профессии</summary><p id="professionLore"></p></details>
+              </section>
+            </div>
           </div>
-          <label><span class="label-line">Текущий Base XP <span class="field-help" tabindex="0" aria-label="Напишите здесь ваш текущий базовый опыт. 20% от этого опыта вы можете потратить на развитие персонажа так, будто бы прокачивались после его создания." data-help="Напишите здесь ваш текущий базовый опыт. 20% от этого опыта вы можете потратить на развитие персонажа так, будто бы прокачивались после его создания.">?</span></span><input id="baseXp" type="number" min="0" step="1"></label>
+          <div class="identity-parameters">
+            <section class="identity-parameter" aria-labelledby="birthDateTitle">
+              <div class="identity-parameter-heading"><h3 id="birthDateTitle">Дата рождения</h3><span id="ageBadge" class="identity-badge"></span></div>
+              <div id="birthDateGroup" class="birth-date-row" role="group" aria-labelledby="birthDateTitle">
+                <label><span id="birthYearLabel">Год рождения</span><input id="birthYear" type="number" step="1"></label>
+                <label>Трилуние<select id="birthMonth"></select></label>
+                <label>День<input id="birthDay" type="number" min="1" max="30" step="1"></label>
+              </div>
+              <div id="ageSummary" class="summary-line"></div>
+            </section>
+            <section class="identity-parameter" aria-labelledby="initialXpTitle">
+              <div class="identity-parameter-heading"><h3 id="initialXpTitle">Начальный опыт</h3></div>
+              <div class="xp-allocation">
+                <label><span class="label-line">Текущий Base XP <span class="field-help" tabindex="0" aria-label="Введите текущий базовый опыт. 20% можно потратить на развитие персонажа после его создания." data-help="Введите текущий базовый опыт. 20% можно потратить на развитие персонажа после его создания.">?</span></span><input id="baseXp" type="number" min="0" step="1"></label>
+                <div class="xp-allocation-result"><span>На развитие · 20%</span><strong id="baseXpBudgetValue"></strong></div>
+              </div>
+              <div id="baseXpAllowance" class="summary-line"></div>
+            </section>
+          </div>
+          <aside id="assetsPanel" class="identity-appearance" aria-labelledby="appearanceTitle">
+            <div class="appearance-heading"><h3 id="appearanceTitle">Облик</h3><p>Можно добавить позже</p></div>
+            <div class="asset-grid">
+              <article class="asset-card">
+                <h4>Портрет</h4>
+                <div class="asset-preview portrait-preview"><img id="portraitPreview" alt="Предпросмотр портрета" hidden=""><span id="portraitEmpty" class="asset-placeholder">Лист персонажа</span></div>
+                <div class="asset-actions">
+                  <label class="file-button" aria-label="Выбрать портрет">Выбрать<input id="portraitFile" type="file" accept="image/png,image/webp,image/jpeg"></label>
+                  <button id="removePortrait" type="button" aria-label="Убрать портрет">Убрать</button>
+                </div>
+                <div id="portraitMeta" class="asset-meta"></div>
+              </article>
+              <article class="asset-card">
+                <h4>Токен</h4>
+                <div class="asset-preview token-preview"><img id="tokenPreview" alt="Предпросмотр токена" hidden=""><span id="tokenEmpty" class="asset-placeholder">На сцене</span></div>
+                <div class="asset-actions">
+                  <label class="file-button" aria-label="Выбрать токен">Выбрать<input id="tokenFile" type="file" accept="image/png,image/webp,image/jpeg"></label>
+                  <button id="removeToken" type="button" aria-label="Убрать токен">Убрать</button>
+                </div>
+                <div id="tokenMeta" class="asset-meta"></div>
+              </article>
+            </div>
+            <p id="assetFormats" class="identity-field-hint">PNG, WebP или JPEG · до 12 МБ</p>
+          </aside>
         </div>
-        <div id="baseXpAllowance" class="summary-line"></div>
-        <div id="ageSummary" class="summary-line"></div>
         <p id="mortarFoundryNote" class="panel-help" hidden="">После импорта в Foundry выполняются обязательные D2 для Reputation «Убийца» и D100 по таблице дефектов. Результаты не выбираются в билдере.</p>
+      </section>
 
-      <details class="origin-details" id="originDetails"><summary>Происхождение, вера и гражданство</summary><div class="form-grid"><label>Происхождение<select id="origin"></select></label><label class="">Конкретное место происхождения<input id="originDetail" type="text" autocomplete="off" placeholder="Город, деревня, остров, район или община"></label><label>Вера<select id="religion"></select></label><label>Уточнение веры<input id="religionDetail" type="text" autocomplete="off" placeholder="Течение, местный культ, личное отношение"></label><label>Гражданство<input id="citizenship" type="text" autocomplete="off" placeholder="Если отличается от места рождения"></label></div><div id="identityLore" class="lore-grid" aria-live="polite"></div></details></section>
-
-      <section class="panel" id="assetsPanel" data-step="identity">
-        <h2>Изображения</h2>
-
-
-      <details id="assetDetails"><summary>Портрет и токен</summary><p class="panel-help">Портрет используется в листе Actor. Токен используется на сцене. Допустимы PNG, WebP и JPEG до 12 МБ.</p><div class="asset-grid">
-          <article class="asset-card">
-            <h3>Портрет</h3>
-            <div class="asset-preview portrait-preview"><img id="portraitPreview" alt="Предпросмотр портрета" hidden=""><span id="portraitEmpty">Не выбран</span></div>
-            <div id="portraitMeta" class="asset-meta"></div>
-            <div class="asset-actions">
-              <label class="file-button">Выбрать<input id="portraitFile" type="file" accept="image/png,image/webp,image/jpeg"></label>
-              <button id="removePortrait" type="button">Убрать</button>
-            </div>
-          </article>
-          <article class="asset-card">
-            <h3>Токен</h3>
-            <div class="asset-preview token-preview"><img id="tokenPreview" alt="Предпросмотр токена" hidden=""><span id="tokenEmpty">Не выбран</span></div>
-            <div id="assetMeta" class="asset-meta"></div>
-            <div id="tokenMeta" class="asset-meta"></div>
-            <div class="asset-actions">
-              <label class="file-button">Выбрать<input id="tokenFile" type="file" accept="image/png,image/webp,image/jpeg"></label>
-              <button id="removeToken" type="button">Убрать</button>
-            </div>
-          </article>
-        </div></details></section>
+      <section class="panel identity-origin" id="originPanel" data-step="identity" aria-labelledby="originTitle">
+        <div class="identity-section-heading"><h3 id="originTitle">Происхождение и вера</h3><p>Связь персонажа с миром Воздушных Островов</p></div>
+        <div class="origin-fields">
+          <div class="origin-field-group">
+            <label>Происхождение<select id="origin"></select></label>
+            <label>Конкретное место<input id="originDetail" type="text" autocomplete="off" placeholder="Город, остров или община"></label>
+          </div>
+          <div class="origin-field-group">
+            <label>Вера<select id="religion"></select></label>
+            <label>Уточнение веры<input id="religionDetail" type="text" autocomplete="off" placeholder="Течение или личное отношение"></label>
+          </div>
+          <div class="origin-field-group">
+            <label>Гражданство<input id="citizenship" type="text" autocomplete="off" placeholder="Страна или государство"></label>
+            <p class="identity-field-hint">Укажите, если отличается от места рождения.</p>
+          </div>
+        </div>
+        <details class="origin-details" id="originDetails"><summary>Справка о происхождении и вере</summary><div id="identityLore" class="lore-grid" aria-live="polite"></div></details>
+      </section>
 
       <section class="panel" id="attributesPanel" data-step="attributes">
         <h2>Характеристики</h2>

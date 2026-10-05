@@ -70,7 +70,9 @@ try {
   if (dom.window.document.querySelector(".rules-runtime, #rulesStatus, #checkRulesUpdate, #restorePreviousRules, #loadRulesPackage")) {
     throw new Error("Игрокам всё ещё показаны служебные элементы управления пакетами правил.");
   }
-  if (dom.window.document.querySelectorAll("#identityLore .lore-card").length < 3) {
+  if (dom.window.document.querySelectorAll("#identityLore .lore-card").length < 2
+    || !dom.window.document.querySelector("#kinLore")?.textContent.trim()
+    || !dom.window.document.querySelector("#professionLore")?.textContent.trim()) {
     throw new Error("Контекстные карточки расы, профессии, происхождения и веры не отрисованы.");
   }
   if (dom.window.document.querySelectorAll("#generalTalentCatalog .catalog-item").length < 70) {

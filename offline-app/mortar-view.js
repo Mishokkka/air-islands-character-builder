@@ -6,8 +6,11 @@ globalThis.AirIslandsMortarView = {
     root.hidden = !active;
     document.getElementById("mortarFoundryNote").hidden = !active;
     document.getElementById("profession").closest("label").hidden = active;
+    document.getElementById("professionGroup").hidden = active;
     document.getElementById("profession").disabled = active;
     document.getElementById("birthYearLabel").textContent = active ? "Год пробуждения" : "Год рождения";
+    document.getElementById("birthDateTitle").textContent = active ? "Дата пробуждения" : "Дата рождения";
+    document.getElementById("ageBadge").hidden = active;
     document.getElementById("ageSummary").hidden = active;
     if (!active) {
       root.replaceChildren();
