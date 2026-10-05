@@ -4,12 +4,12 @@
   const core = globalThis.AirIslandsCore;
   const zip = globalThis.AirIslandsZip;
   const appConfig = {
-    builderVersion: "1.3.0",
+    builderVersion: "2.0.0",
     rulesManifestUrl: "./rules/manifest.json",
     remoteCheckTimeoutMs: 8000,
     ...(globalThis.AIR_ISLANDS_CONFIG ?? {})
   };
-  const BUILDER_VERSION = String(appConfig.builderVersion || "1.3.0");
+  const BUILDER_VERSION = String(appConfig.builderVersion || "2.0.0");
   const RULES_DB_NAME = "air-islands-character-builder-rules";
   const RULES_DB_VERSION = 1;
   const RULES_PACKAGE_STORE = "packages";
@@ -56,13 +56,13 @@
     other: "Прочее"
   };
   const WIZARD_STEPS = [
-    { id: "identity", label: "Основа и изображения", paths: ["identity", "assets", "experience.baseTotal"] },
+    { id: "identity", label: "Основа", paths: ["identity", "assets", "experience.baseTotal"] },
     { id: "attributes", label: "Характеристики", paths: ["attributes"] },
     { id: "skills", label: "Навыки", paths: ["skills"] },
     { id: "talents", label: "Таланты", paths: ["creation", "experience.ledger"] },
     { id: "spells", label: "Заклинания", paths: ["creation.startingSpells", "experience.ledger"] },
-    { id: "languages", label: "Языки, XP и репутация", paths: ["languages", "languageRolls", "reputation", "experience.ledger"] },
-    { id: "biography", label: "Биография", paths: ["biography", "equipmentRequest", "gmRequests"] },
+    { id: "languages", label: "Языки и репутация", paths: ["languages", "languageRolls", "reputation", "experience.ledger"] },
+    { id: "biography", label: "История", paths: ["biography", "equipmentRequest", "gmRequests"] },
     { id: "review", label: "Проверка и экспорт", paths: [] }
   ];
   const cloneValue = value => typeof globalThis.structuredClone === "function" ? globalThis.structuredClone(value) : JSON.parse(JSON.stringify(value));
@@ -102,9 +102,13 @@
   let tooltipHideTimer = null;
   let activeTooltipTarget = null;
   let purchaseMenuCleanup = null;
+  let editor, editHistory;
+  const visitedSteps = new Set([currentStep]);
   state = migrateCharacter(state);
   ensureCharacterShape();
   populateStaticControls();
+  editHistory = AirIslandsEditorUI.createHistory(historySnapshot());
+  editor = AirIslandsEditorUI.create({ navigate:setWizardStep, undo:()=>restoreHistory('undo'), redo:()=>restoreHistory('redo'), catalog:catalogDetail, spellCatalog:spellDetail });
   buildWizardNavigation();
   bindStaticEvents();
   syncStaticFields();
@@ -113,9 +117,98 @@
   registerServiceWorker();
   restoreAssets().then(() => {
     renderAssets();
+    editHistory.reset(historySnapshot());
     updateValidation();
   }).catch(error => console.warn("Не удалось восстановить изображения черновика.", error));
   setTimeout(() => checkRemoteRules({ silent: true }), 80);
+
+  function historySnapshot() { return { character: cloneValue(state), files: { ...assetFiles } }; }
+
+  async function restoreHistory(direction) {
+    const snapshot = editHistory[direction]();
+    if (!snapshot) return;
+    state = snapshot.character; assetFiles = snapshot.files;
+    populateStaticControls(); syncStaticFields(); renderDynamic();
+    for (const kind of ['portrait', 'token']) {
+      try { if (assetFiles[kind]) await storeAsset(kind, assetFiles[kind]); else await deleteStoredAsset(kind); }
+      catch { editor.notify('Изображение восстановлено в редакторе, но не сохранено на устройстве. Скачайте черновик.'); }
+    }
+  }
+
+  function availableSteps() {
+    const magical = state.identity.kinId !== 'mortar' && index.talents.get(state.creation.initialPathCatalogId)?.magical;
+    return WIZARD_STEPS.filter(step => step.id !== 'spells' || magical).map(step => ({ ...step, label: step.id === 'talents' && state.identity.kinId === 'mortar' ? 'Системы и таланты' : step.label }));
+  }
+
+  function stepForIssue(path) {
+    if (path.startsWith('experience.ledger')) {
+      const position = Number(path.split('.')[2]);
+      const type = state.experience.ledger[position]?.type;
+      return { skill: 'skills', spell: 'spells', reputation: 'languages', talent: 'talents' }[type] || 'talents';
+    }
+    return WIZARD_STEPS.find(entry => entry.id !== 'review' && entry.paths.some(prefix => path === prefix || path.startsWith(prefix + '.')))?.id || 'review';
+  }
+
+  let foundationPending = false;
+  async function changeFoundation(mutate, reason) {
+    if (foundationPending) { syncStaticFields(); return; }
+    const previous = cloneValue(state);
+    const purchases = progressionSnapshot();
+    mutate(); ensureInitialPath(); ensureNativeLanguage();
+    const removed = reconcileProgression(purchases, reason);
+    const proposed = cloneValue(state);
+    if (removed.length) {
+      state = previous; foundationPending = true;
+      let accepted;
+      try { accepted = await editor.confirmChange('Последствия ' + reason, ['Сохранятся все совместимые решения. Будут удалены:', ...removed, 'После применения изменение можно целиком отменить кнопкой ↶.']); }
+      finally { foundationPending = false; }
+      state = accepted ? proposed : previous;
+    }
+    syncStaticFields(); renderDynamic();
+  }
+
+  function catalogDetail(catalogId) {
+    const talent = index.talents.get(catalogId);
+    if (!talent) return null;
+    const replay = core.replayCharacter(state, rules);
+    const rank = replay.state.talents.get(catalogId) ?? 0;
+    const tx = { type:'talent', catalogId, toRank:rank+1 };
+    const age = core.simulateAgeTalentTransaction(state, rules, tx);
+    const xp = core.simulateXpTransaction(state, rules, tx);
+    const position = lastXpTransactionIndex(t => t.type === 'talent' && t.catalogId === catalogId);
+    const actions = [];
+    if (rank < (talent.maximumRank ?? 5)) {
+      if (age.valid) actions.push({label:`За ${age.record.cost} возрастных очк.`,run:()=>addAgeTalent(catalogId)});
+      if (xp.valid) actions.push({label:xp.cost ? `Ранг ${rank+1} · ${xp.cost} XP` : 'Получить ранг 1 бесплатно',primary:true,run:()=>addXpTalent(catalogId)});
+    }
+    if (position >= 0) actions.push({label:'Отменить последнюю покупку XP',run:()=>removeXpTransactionAt(position,talent.name)});
+    const agePosition = state.creation.ageTalentLedger.findLastIndex(t => t.catalogId === catalogId);
+    if (agePosition >= 0) actions.push({label:'Вернуть возрастные очки',run:()=>{
+      const previous=progressionSnapshot(); previous.ageTalentLedger.splice(agePosition,1);
+      const removed=reconcileProgression(previous); renderDynamic();
+      if(removed.length) editor.notify('Также отменены зависимые покупки: ' + removed.join(', ') + '. Можно восстановить кнопкой ↶.');
+    }});
+    return { name:talent.name, meta:`${talent.type === 'profession' ? 'Профессиональный путь' : talent.builderRole ? 'Система мортара' : 'Талант'} · ранг ${rank} / ${talent.maximumRank ?? 5}`,
+      description:sanitizeCatalogHtml(catalogDescription(talent)) || '<p>Описание отсутствует.</p>',actions,
+      reason:rank >= (talent.maximumRank ?? 5) ? 'Максимальный ранг.' : xp.valid ? `После покупки останется ${replay.final.xpRemaining-xp.cost} XP.` : xp.issue?.message || age.issue?.message || '' };
+  }
+
+  function spellDetail(catalogId) {
+    const spell=index.spells.get(catalogId); if(!spell)return null;
+    const replay=core.replayCharacter(state,rules);
+    const chosen=replay.final.spells.find(s=>s.catalogId===catalogId);
+    const xp=core.simulateXpTransaction(state,rules,{type:'spell',catalogId});
+    const startingCount=state.creation.startingSpells.filter(id=>index.spells.get(id)?.rank===spell.rank).length;
+    const canStart=!chosen && replay.startingSpells.allowedDisciplines.includes(spell.discipline) && spell.rank<=replay.startingSpells.initialRank && startingCount<startingSpellLimit(spell.rank);
+    const actions=[];
+    if(canStart)actions.push({label:'Выбрать стартовым · бесплатно',primary:true,run:()=>addStartingSpell(catalogId)});
+    if(!chosen && xp.valid)actions.push({label:`Изучить за ${xp.cost} XP`,primary:!canStart,run:()=>addXpTransaction({type:'spell',catalogId})});
+    if(chosen)actions.push({label:'Убрать заклинание',run:()=>{
+      if(chosen.source==='starting'){state.creation.startingSpells=state.creation.startingSpells.filter(id=>id!==catalogId);renderDynamic();}
+      else removeXpTransactionAt(lastXpTransactionIndex(t=>t.type==='spell'&&t.catalogId===catalogId),spell.name);
+    }});
+    return {name:spell.name,meta:`${spell.discipline} · ранг ${spell.rank}`,description:sanitizeCatalogHtml(catalogDescription(spell))||'<p>Описание отсутствует.</p>',actions,reason:chosen?'Заклинание выбрано.':canStart?'Доступно бесплатно при создании.':xp.valid?`После покупки останется ${replay.final.xpRemaining-xp.cost} XP.`:xp.issue?.message||'Недоступно.'};
+  }
 
   function createDefaultCharacter() {
     const skills = Object.fromEntries(rules.skills.map(skill => [skill.id, { startingRank: 0 }]));
@@ -301,6 +394,10 @@
     state.assets ??= { portrait: null, token: null };
     state.assets.portrait ??= null;
     state.assets.token ??= null;
+    if (state.identity.kinId === 'mortar') {
+      state.creation.mortar = { killerRoll:null, defectRoll:null };
+      state.reputation.entries = state.reputation.entries.filter(entry=>entry.id!=='mortar-killer');
+    }
     ensureInitialPath();
     ensureNativeLanguage();
     ensureReputationEntries();
@@ -312,6 +409,7 @@
   }
 
   function ensureInitialPath() {
+    if (state.identity.kinId === "mortar") { state.identity.professionId = ""; state.creation.initialPathCatalogId = null; return; }
     const allowed = availableProfessionPaths(state.identity.professionId);
     if (!allowed.includes(state.creation.initialPathCatalogId)) state.creation.initialPathCatalogId = allowed[0] ?? null;
   }
@@ -419,10 +517,17 @@
       if (tx.type === "reputation") state.experience.ledger.push(tx);
     }
 
+    // Replay each retained operation through the same engine used by purchases and export.
+    const candidates = state.experience.ledger;
+    state.experience.ledger = [];
+    for (const candidate of candidates) {
+      if (core.simulateXpTransaction(state, rules, candidate).valid) state.experience.ledger.push(candidate);
+    }
     ensureReputationEntries();
-    const removed = previous.ageTalentLedger.length + previous.startingSpells.length + previous.xpLedger.length
-      - state.creation.ageTalentLedger.length - state.creation.startingSpells.length - state.experience.ledger.length;
-    if (removed > 0) alert(`После ${reason} сохранены все совместимые покупки. Удалено несовместимых записей: ${removed}.`);
+    const retained = new Set([...state.creation.ageTalentLedger, ...state.experience.ledger].map(tx=>tx.id));
+    return [...previous.ageTalentLedger, ...previous.xpLedger].filter(tx=>!retained.has(tx.id))
+      .map(tx=>index.talents.get(tx.catalogId)?.name || index.spells.get(tx.catalogId)?.name || index.skills.get(tx.skillId)?.name || tx.type)
+      .concat(previous.startingSpells.filter(id=>!state.creation.startingSpells.includes(id)).map(id=>index.spells.get(id)?.name || id));
   }
 
   function rebaseSkillXpTransactions(skillId) {
@@ -517,41 +622,43 @@
 
   function setWizardStep(stepId) {
     if (!WIZARD_STEPS.some(step => step.id === stepId)) return;
-    currentStep = stepId;
+    currentStep = availableSteps().some(step=>step.id===stepId) ? stepId : "talents";
+    visitedSteps.add(currentStep);
+    editor?.closeDetail();
+    closePurchaseMenu(); hideCatalogTooltip();
     try { localStorage.setItem(STEP_STORAGE_KEY, stepId); } catch { /* file:// may restrict storage */ }
     renderWizard(updateValidation(false));
     document.querySelector(".app-shell")?.scrollIntoView?.({ behavior: "smooth", block: "start" });
   }
 
-  function issueMatchesStep(issue, step) {
-    const path = String(issue?.path ?? "");
-    if (!path) return step.id === "review";
-    return step.paths.some(prefix => path === prefix || path.startsWith(`${prefix}.`));
-  }
+  function issueMatchesStep(issue, step) { return stepForIssue(String(issue?.path??'')) === step.id; }
 
   function renderWizard(validation) {
-    const position = Math.max(0, WIZARD_STEPS.findIndex(step => step.id === currentStep));
-    for (const panel of document.querySelectorAll("[data-step]")) panel.hidden = panel.dataset.step !== currentStep;
-    for (const button of el.wizardSteps.querySelectorAll(".wizard-step")) {
-      const step = WIZARD_STEPS.find(entry => entry.id === button.dataset.step);
-      const errors = step.id === "review"
-        ? validation.errors
-        : validation.errors.filter(issue => issueMatchesStep(issue, step));
-      const warnings = step.id === "review"
-        ? validation.warnings
-        : validation.warnings.filter(issue => issueMatchesStep(issue, step));
-      button.classList.toggle("active", step.id === currentStep);
-      button.classList.toggle("has-errors", errors.length > 0);
-      button.classList.toggle("complete", errors.length === 0 && step.id !== "review");
-      const status = button.querySelector(".wizard-step-status");
-      status.textContent = errors.length ? String(errors.length) : (warnings.length ? `•${warnings.length}` : "✓");
-      button.setAttribute("aria-current", step.id === currentStep ? "step" : "false");
+    const steps=availableSteps();
+    if(!steps.some(step=>step.id===currentStep))currentStep='talents';
+    const position=steps.findIndex(step=>step.id===currentStep);
+    for(const panel of document.querySelectorAll('.panel[data-step]'))panel.hidden=panel.dataset.step!==currentStep;
+    for(const button of el.wizardSteps.querySelectorAll('.wizard-step')){
+      const step=steps.find(step=>step.id===button.dataset.step);
+      button.hidden=!step; if(!step)continue;
+      button.querySelector('.wizard-step-label').textContent=step.label;
+      button.querySelector('.wizard-step-number').textContent=String(steps.indexOf(step)+1).padStart(2,'0');
+      const errors=step.id==='review'?validation.errors:validation.errors.filter(issue=>issueMatchesStep(issue,step));
+      const visited=visitedSteps.has(step.id);
+      button.classList.toggle('active',step.id===currentStep);
+      button.classList.toggle('has-errors',visited&&errors.length>0);
+      button.classList.toggle('complete',visited&&!errors.length&&step.id!=='review');
+      button.querySelector('.wizard-step-status').textContent=visited?(errors.length?'◦':'✓'):'·';
+      button.title=errors.length?('Осталось решений: '+errors.length):'Раздел заполнен';
+      button.setAttribute('aria-current',step.id===currentStep?'step':'false');
     }
-    el.wizardBack.disabled = position === 0;
-    el.wizardNext.textContent = position === WIZARD_STEPS.length - 1 ? "Экспорт .flchar" : "Далее";
-    el.wizardNext.disabled = position === WIZARD_STEPS.length - 1 && !validation.valid;
-    el.wizardPosition.textContent = `${position + 1} из ${WIZARD_STEPS.length}: ${WIZARD_STEPS[position].label}`;
-    renderWizardResources(validation.derived?.replay ?? core.replayCharacter(state, rules));
+    el.wizardBack.disabled=position===0;
+    el.wizardNext.textContent=position===steps.length-1?'Скачать .flchar':('Далее: '+steps[position+1].label+' →');
+    el.wizardNext.disabled=position===steps.length-1&&!validation.valid;
+    el.wizardPosition.textContent=(position+1)+' / '+steps.length;
+    const replay=validation.derived?.replay ?? core.replayCharacter(state,rules);
+    renderWizardResources(replay);
+    editor.update({state,steps,currentStep,replay,history:editHistory,rules});
   }
 
   function renderWizardResources(replay) {
@@ -720,7 +827,7 @@
     renderDynamic();
     renderRulesStatus();
     persist();
-    if (notify && previousHash !== rules.packageHash) alert(`Правила обновлены до версии ${rules.rulesVersion}. Персонаж перепроверен.`);
+    if (notify && previousHash !== rules.packageHash) editor.notify(`Правила обновлены до версии ${rules.rulesVersion}. Персонаж перепроверен.`);
   }
 
   async function checkRemoteRules({ silent = false } = {}) {
@@ -732,10 +839,21 @@
       button.textContent = "Проверка…";
     }
     try {
-      const next = await fetchRemoteRulesPackage();
+      const next = await fetchRemoteRulesPackage({ activate: false });
       const changed = next.rules.packageHash !== rules.packageHash;
-      await applyRulesState(next, { notify: !silent && changed });
-      if (!silent && !changed) alert("Используется актуальная версия правил.");
+      if (changed) {
+        const accept=await editor.confirmChange('Доступны новые правила', ['Текущий персонаж будет перепроверен по обновлённым правилам. Скачайте черновик, если хотите сохранить отдельную копию со старыми правилами.']);
+        if (accept) {
+          if (next.cacheRecord) {
+            const cache = await activateCachedRulesRecord(next.cacheRecord);
+            next.canRestore = Boolean(cache.previousHash);
+          }
+          await applyRulesState(next, { notify: false });
+          editHistory.reset(historySnapshot());
+          renderDynamic();
+        }
+      }
+      if (!silent && !changed) editor.notify("Используется актуальная версия правил.");
     } catch (error) {
       console.warn("Не удалось проверить обновление правил.", error);
       rulesRuntimeState = {
@@ -744,7 +862,7 @@
         checkedAt: new Date().toISOString()
       };
       renderRulesStatus();
-      if (!silent) alert(`Не удалось проверить обновления: ${error.message}`);
+      if (!silent) editor.notify(`Не удалось проверить обновления: ${error.message}`);
     } finally {
       if (button) {
         button.disabled = false;
@@ -762,7 +880,7 @@
       await applyRulesState(previous);
     } catch (error) {
       console.error(error);
-      alert(`Не удалось восстановить предыдущие правила: ${error.message}`);
+      editor.notify(`Не удалось восстановить предыдущие правила: ${error.message}`);
     }
   }
 
@@ -810,15 +928,24 @@
       });
     } catch (error) {
       console.error(error);
-      alert(`Не удалось загрузить пакет правил: ${error.message}`);
+      editor.notify(`Не удалось загрузить пакет правил: ${error.message}`);
     }
   }
 
   function focusIssue(path) {
-    const step = WIZARD_STEPS.find(entry => entry.id !== "review" && entry.paths.some(prefix => path === prefix || path.startsWith(`${prefix}.`)))?.id ?? "review";
+    const step = stepForIssue(path);
     setWizardStep(step);
+    if (step === 'talents' || step === 'spells') {
+      document.getElementById('talentSearch').value = '';
+      document.getElementById('talentFilter').value = 'all';
+      document.getElementById('spellSearch').value = '';
+      document.getElementById('spellFilter').value = 'all';
+      document.getElementById('spellRank').value = '';
+      editor.filterCatalogs();
+    }
     requestAnimationFrame(() => {
       const target = issueTarget(path);
+      for(let parent=target?.parentElement;parent;parent=parent.parentElement) if(parent.tagName==="DETAILS")parent.open=true;
       target?.scrollIntoView?.({ behavior: "smooth", block: "center" });
       target?.focus?.({ preventScroll: true });
       target?.classList?.add("issue-focus");
@@ -838,6 +965,11 @@
       "assets": el.portraitFile
     };
     if (exact[path]) return exact[path];
+    if(path.startsWith('experience.ledger.')){
+      const tx=state.experience.ledger[Number(path.split('.')[2])];
+      if(tx?.skillId)return el.skillsBody.querySelector('[data-skill="'+CSS.escape(tx.skillId)+'"]');
+      if(tx?.catalogId)return [...document.querySelectorAll('[data-catalog-id]')].find(node=>node.dataset.catalogId===tx.catalogId)?.querySelector('.catalog-item-name');
+    }
     if (path.startsWith("reputation.entries")) return el.reputationEntries;
     const attr = path.match(/^attributes\.(\w+)/u)?.[1];
     if (attr) return document.querySelector(`[data-attribute="${CSS.escape(attr)}"]`);
@@ -1028,28 +1160,26 @@
     setOptions(el.languageSelect, rules.languages.map(entry => [entry.id, entry.name]));
 
     if (!kinEntries.some(entry => entry.id === state.identity.kinId)) state.identity.kinId = kinEntries[0]?.id ?? state.identity.kinId;
-    if (!professionEntries.some(entry => entry.id === state.identity.professionId)) state.identity.professionId = professionEntries[0]?.id ?? state.identity.professionId;
+    if (state.identity.kinId !== "mortar" && !professionEntries.some(entry => entry.id === state.identity.professionId)) state.identity.professionId = professionEntries[0]?.id ?? state.identity.professionId;
     ensureInitialPath();
 
     const accept = (settings.allowedImageTypes?.length ? settings.allowedImageTypes : defaultAllowedImageTypes).join(",");
     el.portraitFile.accept = accept;
     el.tokenFile.accept = accept;
-    const maxXp = Number(settings.maximumBaseXp);
+    const maxXp = settings.maximumBaseXp == null ? NaN : Number(settings.maximumBaseXp);
     el.baseXp.max = Number.isFinite(maxXp) && maxXp >= 0 ? String(maxXp) : "";
   }
 
   function bindStaticEvents() {
     bindText(el.name, value => state.identity.name = value);
-    el.kin.addEventListener("change", () => {
-      const snapshot = progressionSnapshot();
-      state.identity.kinId = el.kin.value;
-      const kin = index.kin.get(state.identity.kinId);
-      state.identity.kinVariantId = kin?.variants?.[0]?.id ?? null;
-      state.identity.kinFocus = kin?.variants?.[0]?.selectableFocus ? "strength" : null;
-      ensureNativeLanguage();
-      reconcileProgression(snapshot, "смены расы");
-      renderDynamic();
-    });
+    el.kin.addEventListener('change',()=>changeFoundation(()=>{
+      state.identity.kinId=el.kin.value;
+      const kin=index.kin.get(state.identity.kinId);
+      state.identity.kinVariantId=kin?.variants?.[0]?.id??null;
+      state.identity.kinFocus=kin?.variants?.[0]?.selectableFocus?'strength':null;
+      if(state.identity.kinId==='mortar') {state.identity.professionId='';state.creation.mortar={killerRoll:null,defectRoll:null};}
+      else if(!state.identity.professionId)state.identity.professionId=el.profession.options[0]?.value || 'fighter';
+    },'смены расы'));
     el.kinVariant.addEventListener("change", () => {
       state.identity.kinVariantId = el.kinVariant.value || null;
       const kin = index.kin.get(state.identity.kinId);
@@ -1059,13 +1189,7 @@
       renderDynamic();
     });
     el.kinFocus.addEventListener("change", () => { state.identity.kinFocus = el.kinFocus.value; renderDynamic(); });
-    el.profession.addEventListener("change", () => {
-      const snapshot = progressionSnapshot();
-      state.identity.professionId = el.profession.value;
-      ensureInitialPath();
-      reconcileProgression(snapshot, "смены профессии");
-      renderDynamic();
-    });
+    el.profession.addEventListener('change',()=>changeFoundation(()=>state.identity.professionId=el.profession.value,'смены профессии'));
     el.origin.addEventListener("change", () => {
       state.identity.originId = el.origin.value;
       ensureNativeLanguage();
@@ -1078,22 +1202,11 @@
     bindText(el.originDetail, value => state.identity.originDetail = value);
     bindText(el.citizenship, value => state.identity.citizenship = value);
     bindText(el.religionDetail, value => state.identity.religionDetail = value);
-    bindNumber(el.birthYear, value => state.identity.birthDate.year = value, renderDynamic);
-    el.birthMonth.addEventListener("change", () => { state.identity.birthDate.month = el.birthMonth.value; renderDynamic(); });
-    bindNumber(el.birthDay, value => state.identity.birthDate.day = value, renderDynamic);
+    el.birthYear.addEventListener('change',()=>changeFoundation(()=>state.identity.birthDate.year=Number(el.birthYear.value),'смены возраста'));
+    el.birthMonth.addEventListener('change',()=>changeFoundation(()=>state.identity.birthDate.month=el.birthMonth.value,'смены даты'));
+    el.birthDay.addEventListener('change',()=>changeFoundation(()=>state.identity.birthDate.day=Number(el.birthDay.value),'смены даты'));
 
-    el.initialPath.addEventListener("change", () => {
-      if (state.creation.initialPathCatalogId === el.initialPath.value) return;
-      if ((state.creation.ageTalentLedger.length || state.creation.startingSpells.length || state.experience.ledger.length)
-        && !confirm("Смена первого Path сохранит совместимые покупки и удалит только те, которые относятся к старому Path. Продолжить?")) {
-        el.initialPath.value = state.creation.initialPathCatalogId;
-        return;
-      }
-      const snapshot = progressionSnapshot();
-      state.creation.initialPathCatalogId = el.initialPath.value;
-      reconcileProgression(snapshot, "смены Professional Path");
-      renderDynamic();
-    });
+    el.initialPath.addEventListener('change',()=>changeFoundation(()=>state.creation.initialPathCatalogId=el.initialPath.value,'смены пути'));
 
     el.undoAgeTalent.addEventListener("click", () => {
       state.creation.ageTalentLedger.pop();
@@ -1142,7 +1255,7 @@
       [el.bioFamily, "family"], [el.bioMotivation, "motivation"], [el.bioPride, "pride"],
       [el.bioDarkSecret, "darkSecret"], [el.bioConnections, "partyConnections"], [el.bioPublicNote, "publicNote"]
     ];
-    for (const [control, key] of bioBindings) bindText(control, value => state.biography[key] = value);
+    for (const [control, key] of bioBindings) { control.dataset.biographyKey=key; bindText(control, value => state.biography[key] = value); }
     const physicalBindings = [
       [el.physicalHeight, "height"], [el.physicalWeight, "weight"], [el.physicalSkin, "skin"],
       [el.physicalEyes, "eyes"], [el.physicalHair, "hair"], [el.physicalMarks, "distinguishingMarks"]
@@ -1165,7 +1278,7 @@
     });
     el.addGmRequest.addEventListener("click", () => {
       const description = el.gmRequestDescription.value.trim();
-      if (!description) { alert("Опишите запрос ГМу."); return; }
+      if (!description) { editor.notify("Опишите запрос ГМу."); return; }
       state.gmRequests.push({ id: uid(), category: el.gmRequestCategory.value || "other", description });
       el.gmRequestDescription.value = "";
       renderGmRequests(); persist(); updateValidation();
@@ -1176,25 +1289,27 @@
       const file = event.target.files?.[0];
       event.target.value = "";
       if (!file) return;
-      try { await selectAsset("portrait", file); } catch (error) { alert(error.message); }
+      try { await selectAsset("portrait", file); } catch (error) { editor.notify(error.message); }
     });
     el.tokenFile.addEventListener("change", async event => {
       const file = event.target.files?.[0];
       event.target.value = "";
       if (!file) return;
-      try { await selectAsset("token", file); } catch (error) { alert(error.message); }
+      try { await selectAsset("token", file); } catch (error) { editor.notify(error.message); }
     });
     el.removePortrait.addEventListener("click", () => removeAsset("portrait"));
     el.removeToken.addEventListener("click", () => removeAsset("token"));
 
     el.wizardBack.addEventListener("click", () => {
-      const position = WIZARD_STEPS.findIndex(step => step.id === currentStep);
-      if (position > 0) setWizardStep(WIZARD_STEPS[position - 1].id);
+      const steps = availableSteps();
+      const position = steps.findIndex(step => step.id === currentStep);
+      if (position > 0) setWizardStep(steps[position - 1].id);
     });
     el.wizardNext.addEventListener("click", () => {
-      const position = WIZARD_STEPS.findIndex(step => step.id === currentStep);
-      if (position === WIZARD_STEPS.length - 1) downloadCharacter(true);
-      else setWizardStep(WIZARD_STEPS[position + 1].id);
+      const steps = availableSteps();
+      const position = steps.findIndex(step => step.id === currentStep);
+      if (position === steps.length - 1) downloadCharacter(true);
+      else setWizardStep(steps[position + 1].id);
     });
 
     el.saveDraft.addEventListener("click", () => downloadCharacter(false));
@@ -1207,14 +1322,11 @@
       const button = event.target.closest("[data-issue-path]");
       if (button) focusIssue(button.dataset.issuePath);
     });
-    el.resetDraft.addEventListener("click", () => {
-      if (!confirm("Сбросить текущий черновик?")) return;
-      state = createDefaultCharacter();
-      for (const kind of ["portrait", "token"]) removeAsset(kind);
-      ensureCharacterShape();
-      syncStaticFields();
-      currentStep = WIZARD_STEPS[0].id;
-      renderDynamic();
+    el.resetDraft.addEventListener('click', async()=>{
+      if(!await editor.confirmChange('Создать нового персонажа?', ['Текущий персонаж останется в истории изменений до перезагрузки. Чтобы сохранить отдельную копию, скачайте черновик.']))return;
+      state=createDefaultCharacter(); assetFiles={portrait:null,token:null};
+      await Promise.all(['portrait','token'].map(deleteStoredAsset));
+      ensureCharacterShape();syncStaticFields();currentStep='identity';renderDynamic();
     });
 
     el.catalogTooltip.addEventListener("mouseenter", cancelTooltipHide);
@@ -1303,6 +1415,7 @@
     renderRumors();
     renderGmRequests();
     renderAssets();
+    AirIslandsMortarView.render({state,rules,replay,index,core,buy:addXpTalent,undo:removeXpTransactionAt,describe:(id,target)=>editor.openDetail(id,'talent',target),tooltip:attachCatalogTooltip,escapeHtml});
     persist();
     updateValidation();
   }
@@ -1318,6 +1431,7 @@
     }
     const variant = variants.find(entry => entry.id === state.identity.kinVariantId);
     el.kinFocusWrap.hidden = !variant?.selectableFocus;
+    el.kinFocus.disabled = !variant?.selectableFocus;
     if (variant?.selectableFocus) el.kinFocus.value = state.identity.kinFocus ?? "strength";
   }
 
@@ -1330,57 +1444,66 @@
   }
 
   function renderAttributes() {
-    const age = core.calculateAge(state.identity.birthDate, rules.campaignDate, rules);
-    const category = core.ageCategoryFor(index.kin.get(state.identity.kinId), age);
-    const target = rules.ageCategories[category]?.attributePoints ?? 0;
+    const replay = core.replayCharacter(state, rules);
+    const target = replay.categoryRules?.attributePoints ?? 0;
     const total = ATTRIBUTES.reduce((sum, [id]) => sum + (Number(state.attributes[id]) || 0), 0);
-    el.attributeSummary.textContent = `Распределено ${total} из ${target}.`;
-    el.attributeSummary.classList.toggle("error", total !== target);
-    el.attributes.innerHTML = "";
+    el.attributeSummary.textContent = `Распределено ${total} из ${target}. ${target > total ? 'Осталось: ' + (target-total) + '.' : total > target ? 'Превышение: ' + (total-target) + '.' : 'Все очки распределены.'}`;
+    el.attributeSummary.classList.toggle('error', total > target);
     for (const [id, label] of ATTRIBUTES) {
       const maximum = core.attributeMaximum(id, state, rules);
-      const card = document.createElement("div");
-      card.className = "stat-card";
-      card.innerHTML = `<label>${label}<input type="number" min="2" max="${maximum}" step="1" value="${state.attributes[id] ?? 2}" data-attribute="${id}"></label><small>Максимум: ${maximum}</small>`;
-      card.querySelector("input").addEventListener("input", event => {
-        state.attributes[id] = Number(event.target.value);
-        renderDynamic();
-      });
-      el.attributes.append(card);
+      let card = el.attributes.querySelector(`[data-stat="${id}"]`);
+      if (!card) {
+        card = document.createElement('div'); card.className='stat-card'; card.dataset.stat=id;
+        card.innerHTML=`<label for="attribute-${id}">${label}</label><div class="stat-control"><button type="button" data-minus aria-label="Уменьшить ${label}">−</button><input id="attribute-${id}" data-attribute="${id}" type="number" min="2" step="1"><button type="button" data-plus aria-label="Увеличить ${label}">+</button></div><small></small>`;
+        const field=card.querySelector('input');
+        field.addEventListener('input',()=>{state.attributes[id]=Number(field.value);renderDynamic();});
+        card.querySelector('[data-minus]').onclick=()=>{state.attributes[id]=Math.max(2,Number(state.attributes[id])-1);renderDynamic();};
+        card.querySelector('[data-plus]').onclick=()=>{state.attributes[id]=Math.min(core.attributeMaximum(id,state,rules),Number(state.attributes[id])+1);renderDynamic();};
+        el.attributes.append(card);
+      }
+      const field=card.querySelector('input'); field.max=maximum;
+      if(document.activeElement!==field)field.value=state.attributes[id];
+      field.setAttribute('aria-invalid',String(state.attributes[id]<2||state.attributes[id]>maximum));
+      card.querySelector('small').textContent=`Максимум ${maximum} · ${state.identity.kinId==='mortar'?'Recovery Protocol':'раса и профессия'}`;
+      card.querySelector('[data-minus]').disabled=state.attributes[id]<=2;
+      card.querySelector('[data-plus]').disabled=state.attributes[id]>=maximum || total>=target;
     }
   }
 
   function renderSkills(replay) {
     const profession = index.professions.get(state.identity.professionId);
-    const age = core.calculateAge(state.identity.birthDate, rules.campaignDate, rules);
-    const category = core.ageCategoryFor(index.kin.get(state.identity.kinId), age);
-    const target = rules.ageCategories[category]?.skillPoints ?? 0;
+    const target = replay.categoryRules?.skillPoints ?? 0;
     const spent = rules.skills.reduce((sum, skill) => sum + core.startingSkillCost(Number(state.skills[skill.id]?.startingRank ?? 0)), 0);
-    el.skillSummary.textContent = `Стартовые очки: ${spent} из ${target}. Итоговые ранги повышаются только через журнал Base XP.`;
-    el.skillSummary.classList.toggle("error", spent !== target);
-    el.skillsBody.innerHTML = "";
+    el.skillSummary.textContent = `Стартовые очки: ${spent} / ${target}. Опыт на развитие: ${replay.final.xpRemaining} XP.`;
+    el.skillSummary.classList.toggle('error', spent > target);
     for (const skill of rules.skills) {
       const classSkill = profession?.skills.includes(skill.id);
-      const row = document.createElement("tr");
-      if (classSkill) row.className = "class-skill";
       const entry = state.skills[skill.id];
       const finalRank = replay.final.skills[skill.id] ?? entry.startingRank;
-      const simulation = finalRank < 5 ? core.simulateXpTransaction(state, rules, { type: "skill", skillId: skill.id, toRank: finalRank + 1 }) : { valid: false };
-      const undoPosition = lastXpTransactionIndex(tx => tx.type === "skill" && tx.skillId === skill.id);
-      const undoResult = undoPosition >= 0 ? xpTransactionResult(replay, undoPosition) : null;
-      row.innerHTML = `<td>${escapeHtml(skill.name)}</td><td>${skill.attribute.toUpperCase()}</td><td><input data-skill="${escapeHtml(skill.id)}" type="number" min="0" max="4" value="${entry.startingRank}"></td><td><strong>${finalRank}</strong></td><td><span class="row-actions xp-inline-actions"><button type="button" data-undo-xp class="xp-undo" ${undoPosition < 0 ? "disabled" : ""}>${undoResult ? `−1 · вернуть ${undoResult.cost} XP` : "−1"}</button><button type="button" data-buy-xp ${!simulation.valid ? "disabled" : ""}>${simulation.valid ? `+1 · ${simulation.cost} XP` : "+1 Rank"}</button></span></td>`;
-      row.querySelector("input").addEventListener("input", event => {
-        entry.startingRank = Number(event.target.value);
-        rebaseSkillXpTransactions(skill.id);
-        renderDynamic();
-      });
-      const skillButton = row.querySelector("[data-buy-xp]");
-      const skillUndoButton = row.querySelector("[data-undo-xp]");
-      skillButton.title = simulation.issue?.message ?? "";
-      skillUndoButton.title = undoPosition >= 0 ? "Отменить последнее повышение этого навыка за Base XP." : "Этот навык не повышался за Base XP.";
-      skillButton.addEventListener("click", () => addXpTransaction({ type: "skill", skillId: skill.id, toRank: finalRank + 1 }));
-      skillUndoButton.addEventListener("click", () => removeXpTransactionAt(undoPosition, `повышения навыка ${skill.name}`));
-      el.skillsBody.append(row);
+      const simulation = finalRank < 5 ? core.simulateXpTransaction(state, rules, {type:'skill',skillId:skill.id,toRank:finalRank+1}) : {valid:false};
+      const undoPosition = lastXpTransactionIndex(tx => tx.type==='skill' && tx.skillId===skill.id);
+      const undoResult = undoPosition>=0 ? xpTransactionResult(replay,undoPosition) : null;
+      let row = [...el.skillsBody.children].find(row=>row.dataset.skillId===skill.id);
+      if(!row){
+        row=document.createElement('tr');row.dataset.skillId=skill.id;
+        row.innerHTML=`<td class="skill-name">${escapeHtml(skill.name)}</td><td>${skill.attribute.toUpperCase()}</td><td><input aria-label="Стартовый ранг ${escapeHtml(skill.name)}" data-skill="${escapeHtml(skill.id)}" type="number" min="0" max="4"></td><td><strong class="final-rank"></strong></td><td><span class="row-actions xp-inline-actions"><button type="button" data-undo-xp class="xp-undo"></button><button type="button" data-buy-xp></button></span></td>`;
+        const field=row.querySelector('input');
+        field.addEventListener('input',()=>{state.skills[skill.id].startingRank=Number(field.value);rebaseSkillXpTransactions(skill.id);renderDynamic();});
+        row.querySelector('[data-buy-xp]').onclick=()=>{const next=core.replayCharacter(state,rules).final.skills[skill.id]+1;addXpTransaction({type:'skill',skillId:skill.id,toRank:next});};
+        row.querySelector('[data-undo-xp]').onclick=()=>removeXpTransactionAt(lastXpTransactionIndex(tx=>tx.type==='skill'&&tx.skillId===skill.id),skill.name);
+        el.skillsBody.append(row);
+      }
+      row.classList.toggle('class-skill',Boolean(classSkill));
+      row.querySelector('.skill-name').title=classSkill?'Профессиональный навык':'';
+      const field=row.querySelector('input');
+      if(document.activeElement!==field)field.value=entry.startingRank;
+      const category=replay.ageCategory;
+      field.max=state.identity.kinId==='mortar'?2:category==='young'?(classSkill?2:1):category==='old'&&classSkill?4:classSkill?3:2;
+      row.querySelector('.final-rank').textContent=finalRank;
+      const buy=row.querySelector('[data-buy-xp]'), undo=row.querySelector('[data-undo-xp]');
+      buy.disabled=!simulation.valid; buy.textContent=simulation.valid?`+1 · ${simulation.cost} XP`:'+1 ранг';buy.title=simulation.issue?.message||'Максимальный ранг';
+      undo.disabled=undoPosition<0;undo.textContent=undoResult?`−1 · ${undoResult.cost} XP`:'−1';
+      undo.title='Вернуть опыт за последнее повышение';
     }
   }
 
@@ -1453,7 +1576,7 @@
     el.generalTalents.innerHTML = "";
     const general = replay.final.talents
       .map(selection => ({ selection, talent: index.talents.get(selection.catalogId) }))
-      .filter(entry => entry.talent?.type === "general")
+      .filter(entry => entry.talent?.type === "general" && !entry.talent.builderRole)
       .sort((a, b) => a.talent.name.localeCompare(b.talent.name, "ru"));
     if (!general.length) el.generalTalents.innerHTML = '<div class="readonly-card">Общие таланты не выбраны.</div>';
     for (const { selection, talent } of general) {
@@ -1521,15 +1644,19 @@
     const fragment = document.createDocumentFragment();
     const hiddenTalents = new Set(rules.builderSettings?.hiddenTalentCatalogIds ?? []);
     const talents = rules.catalogs.talents.items
-      .filter(item => item.type === "general" && !hiddenTalents.has(item.catalogId))
+      .filter(item => item.type === "general" && !item.builderRole && !hiddenTalents.has(item.catalogId))
       .sort((a, b) => a.name.localeCompare(b.name, "ru"));
 
     for (const talent of talents) {
       const current = replay.state.talents.get(talent.catalogId) ?? 0;
       const tile = document.createElement("div");
-      tile.className = `catalog-item${current ? " selected" : ""}`;
+      tile.className = 'catalog-item' + (current ? ' selected' : '');
+      const ageOption=core.simulateAgeTalentTransaction(state,rules,{type:'talent',catalogId:talent.catalogId,toRank:current+1});
+      const xpOption=core.simulateXpTransaction(state,rules,{type:'talent',catalogId:talent.catalogId,toRank:current+1});
+      tile.dataset.catalogId=talent.catalogId;tile.dataset.name=talent.name.toLocaleLowerCase();
+      tile.dataset.selected=String(current>0);tile.dataset.available=String(ageOption.valid||xpOption.valid);
       const undoPosition = lastXpTransactionIndex(tx => tx.type === "talent" && tx.catalogId === talent.catalogId);
-      tile.innerHTML = `<span class="catalog-item-name" tabindex="0">${escapeHtml(talent.name)}</span><span class="catalog-actions"><button class="catalog-add xp-undo" data-undo-xp type="button" aria-label="Отменить покупку ${escapeHtml(talent.name)} за Base XP" ${undoPosition < 0 ? "disabled" : ""}>−</button><button class="catalog-add" data-buy-xp type="button" aria-label="Добавить ${escapeHtml(talent.name)}" ${current >= 5 ? "disabled" : ""}>+</button></span>`;
+      tile.innerHTML = `<span class="catalog-item-name" tabindex="0">${escapeHtml(talent.name)}${current ? `<small>R${current}</small>` : ""}</span><span class="catalog-actions"><button class="catalog-add xp-undo" data-undo-xp type="button" aria-label="Отменить покупку ${escapeHtml(talent.name)} за Base XP" ${undoPosition < 0 ? "disabled" : ""}>−</button><button class="catalog-add" data-buy-xp type="button" aria-label="Добавить ${escapeHtml(talent.name)}" ${current >= 5 ? "disabled" : ""}>+</button></span>`;
       const name = tile.querySelector(".catalog-item-name");
       const undoButton = tile.querySelector("[data-undo-xp]");
       const button = tile.querySelector("[data-buy-xp]");
@@ -1538,6 +1665,11 @@
       undoButton.addEventListener("click", () => removeXpTransactionAt(undoPosition, `повышения таланта ${talent.name}`));
       button.addEventListener("click", () => openTalentPurchaseMenu(button, talent, current));
       attachCatalogTooltip(name, talent, `General Talent${current ? ` · текущий Rank ${current}` : ""}`);
+      const cost=document.createElement('small');cost.className='catalog-cost';
+      cost.textContent = [ageOption.valid ? ageOption.record.cost + ' возраст.' : '', xpOption.valid ? xpOption.cost + ' XP' : ''].filter(Boolean).join(' / ')
+        || (current >= 5 ? 'Максимальный ранг' : xpOption.issue?.code === 'XP_NOT_ENOUGH' ? 'Нужно ' + xpOption.cost + ' XP' : 'Условия в описании');
+      cost.title = xpOption.issue?.message ?? '';
+      tile.append(cost);
       fragment.append(tile);
     }
     el.generalTalentCatalog.append(fragment);
@@ -1556,7 +1688,7 @@
       action: () => addXpTalent(talent.catalogId)
     });
     if (!options.length) {
-      alert(ageSimulation.issue?.message ?? xpSimulation.issue?.message ?? "Покупка недоступна.");
+      editor.openDetail(talent.catalogId,"talent",anchor);
       return;
     }
     openPurchaseMenu(anchor, `${talent.name}: Rank ${current} → ${current + 1}`, options);
@@ -1574,7 +1706,7 @@
     const current = replay.state.talents.get(catalogId) ?? 0;
     const tx = { id: uid(), type: "talent", catalogId, toRank: current + 1 };
     const result = core.simulateAgeTalentTransaction(state, rules, tx);
-    if (!result.valid) return alert(result.issue?.message ?? "Покупка недоступна.");
+    if (!result.valid) return editor.notify(result.issue?.message ?? "Покупка недоступна.");
     state.creation.ageTalentLedger.push(tx);
     renderDynamic();
   }
@@ -1590,7 +1722,7 @@
     if (!transaction.catalogId && ["talent", "spell"].includes(transaction.type)) return;
     const tx = { id: uid(), ...transaction };
     const result = core.simulateXpTransaction(state, rules, tx);
-    if (!result.valid) return alert(result.issue?.message ?? "Покупка недоступна.");
+    if (!result.valid) return editor.notify(result.issue?.message ?? "Покупка недоступна.");
     state.experience.ledger.push(tx);
     ensureReputationEntries();
     renderDynamic();
@@ -1612,7 +1744,8 @@
     if (!Number.isInteger(position) || position < 0 || position >= (state.experience.ledger?.length ?? 0)) return;
     const snapshot = progressionSnapshot();
     snapshot.xpLedger.splice(position, 1);
-    reconcileProgression(snapshot, `отмены ${label}`);
+    const removed=reconcileProgression(snapshot, 'отмены ' + label);
+    if(removed.length)editor.notify('Также отменены зависимые покупки: '+removed.join(', ')+'. Восстановить всё можно кнопкой ↶.');
     ensureReputationEntries();
     renderDynamic();
   }
@@ -1712,6 +1845,7 @@
             && (counts.get(spell.rank) ?? 0) < rules.spellLimitPerRank;
           const tile = document.createElement("div");
           tile.className = `catalog-item spell-catalog-item${selection ? " selected" : ""}`;
+          tile.dataset.catalogId=spell.catalogId;tile.dataset.name=(spell.name+" "+spell.discipline).toLocaleLowerCase();tile.dataset.rank=String(spell.rank);
           const icon = selection ? "−" : "+";
           const disabled = !selection && (!startingAllowed && !potentialXp);
           const actionLabel = selection?.source === "starting" ? "Убрать" : selection ? "Отменить покупку" : "Добавить";
@@ -1755,7 +1889,7 @@
       action: () => addXpTransaction({ type: "spell", catalogId: spell.catalogId })
     });
     if (!options.length) {
-      alert(xpSimulation.issue?.message ?? "Заклинание сейчас недоступно.");
+      editor.notify(xpSimulation.issue?.message ?? "Заклинание сейчас недоступно.");
       return;
     }
     openPurchaseMenu(anchor, `${spell.name} · Rank ${spell.rank}`, options);
@@ -1766,13 +1900,13 @@
     const replay = core.replayCharacter(state, rules);
     const spell = index.spells.get(catalogId);
     const initialPath = replay.startingSpells.initialPath;
-    if (!initialPath?.magical) return alert("Выбранный первый Path не даёт стартовых заклинаний.");
-    if (!replay.startingSpells.allowedDisciplines.includes(spell?.discipline)) return alert("Это заклинание недоступно как стартовое.");
-    if (!spell || spell.rank > replay.startingSpells.initialRank) return alert(`Доступны стартовые заклинания не выше Rank ${replay.startingSpells.initialRank}.`);
+    if (!initialPath?.magical) return editor.notify("Выбранный первый Path не даёт стартовых заклинаний.");
+    if (!replay.startingSpells.allowedDisciplines.includes(spell?.discipline)) return editor.notify("Это заклинание недоступно как стартовое.");
+    if (!spell || spell.rank > replay.startingSpells.initialRank) return editor.notify(`Доступны стартовые заклинания не выше Rank ${replay.startingSpells.initialRank}.`);
     if (state.creation.startingSpells.includes(catalogId)) return;
     const sameRank = state.creation.startingSpells.filter(id => index.spells.get(id)?.rank === spell.rank).length;
     const freeLimit = startingSpellLimit(spell.rank);
-    if (sameRank >= freeLimit) return alert(`На Rank ${spell.rank} уже выбрано максимально доступное число бесплатных заклинаний: ${freeLimit}.`);
+    if (sameRank >= freeLimit) return editor.notify(`На Rank ${spell.rank} уже выбрано максимально доступное число бесплатных заклинаний: ${freeLimit}.`);
     state.creation.startingSpells.push(catalogId);
     renderDynamic();
   }
@@ -1812,7 +1946,7 @@
     if (existing) return;
     const result = crypto.getRandomValues(new Uint32Array(1))[0] % 6 + 1;
     state.languageRolls.push({ languageId, level, formula: rule.formula, result });
-    alert(`Проверка стоимости языка «${language.name}»: ${rule.formula} = ${result}.`);
+    editor.notify(`Проверка стоимости языка «${language.name}»: ${rule.formula} = ${result}.`);
   }
 
   function renderProgress(replay) {
@@ -1979,7 +2113,7 @@
 
   function renderIssues(issues, className, title) {
     if (!issues.length) return "";
-    return `<div class="issue-block ${className}"><h3>${title}</h3><ul>${issues.map(issue => `<li><button type="button" class="issue-link" data-issue-path="${escapeHtml(issue.path || "")}"><strong>${escapeHtml(issue.code)}</strong>: ${escapeHtml(issue.message)}<span>Перейти</span></button></li>`).join("")}</ul></div>`;
+    return `<div class="issue-block ${className}"><h3>${title}</h3><ul>${issues.map(issue => `<li><button type="button" class="issue-link" data-issue-path="${escapeHtml(issue.path || "")}">${escapeHtml(issue.message)}<span>Перейти</span></button></li>`).join("")}</ul></div>`;
   }
 
   async function downloadCharacter(requireValid) {
@@ -2059,19 +2193,22 @@
       }
       syncStaticFields();
       renderDynamic();
-      if (originalVersion !== 8) alert("Файл предыдущей версии перенесён в формат v8. Старые слухи сохранены; для них можно дополнительно указать имя персонажа.");
+      if (originalVersion !== 8) editor.notify("Файл предыдущей версии перенесён в формат v8. Старые слухи сохранены; для них можно дополнительно указать имя персонажа.");
     } catch (error) {
       console.error(error);
-      alert(`Не удалось открыть файл: ${error.message}`);
+      editor.notify(`Не удалось открыть файл: ${error.message}`);
     }
   }
 
   function persist() {
+    const focused=document.activeElement;
+    editHistory?.record(historySnapshot(),focused?.matches('input,textarea')?(focused.id||focused.dataset.skill||focused.dataset.attribute||'text'):'');
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
       for (const key of LEGACY_STORAGE_KEYS) localStorage.removeItem(key);
+      editor?.saved(true);
     } catch {
-      // Некоторые браузеры ограничивают localStorage для file://. Экспорт файла продолжает работать.
+      editor?.saved(false);
     }
   }
 
@@ -2092,6 +2229,9 @@
   function attachCatalogTooltip(target, entry, meta = "") {
     if (!target || !entry) return;
     target.classList.add("has-catalog-tooltip");
+    target.setAttribute('role','button');target.setAttribute('aria-haspopup','dialog');
+    target.addEventListener('click',()=>editor.openDetail(entry.catalogId,index.spells.has(entry.catalogId)?'spell':'talent',target));
+    target.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();target.click();}});
     target.addEventListener("mouseenter", () => showCatalogTooltip(entry, meta, target));
     target.addEventListener("focus", () => showCatalogTooltip(entry, meta, target));
     target.addEventListener("mouseleave", scheduleTooltipHide);
@@ -2133,6 +2273,7 @@
   }
 
   function showCatalogTooltip(entry, meta, target) {
+    if (!document.getElementById("catalogDetail").hidden) return;
     cancelTooltipHide();
     activeTooltipTarget = target;
     const system = entry.snapshot?.system ?? {};
@@ -2300,7 +2441,7 @@
     }
   }
 
-  async function fetchRemoteRulesPackage() {
+  async function fetchRemoteRulesPackage({ activate = true } = {}) {
     const configured = String(appConfig.rulesManifestUrl ?? "").trim();
     if (!configured) throw new Error("URL манифеста правил не настроен.");
     if (globalThis.location?.protocol === "file:") throw new Error("Автоматическая загрузка недоступна для file://. Используется локальный резерв.");
@@ -2335,21 +2476,23 @@
     if (manifest.rulesPackageHash && rules.packageHash !== manifest.rulesPackageHash) {
       throw new Error("Внутренняя версия пакета правил не совпадает с манифестом.");
     }
-    const cache = await activateCachedRulesRecord({
+    const cacheRecord = {
       packageSha256,
       bytes,
       manifest,
       rulesVersion: rules.rulesVersion,
       rulesPackageHash: rules.packageHash,
       savedAt: new Date().toISOString()
-    });
+    };
+    const cache = activate ? await activateCachedRulesRecord(cacheRecord) : cachedState;
     return {
       rules,
       manifest,
       packageSha256,
       source: "remote",
       checkedAt: new Date().toISOString(),
-      canRestore: Boolean(cache.previousHash)
+      canRestore: Boolean(cache?.previousHash),
+      cacheRecord: activate ? null : cacheRecord
     };
   }
 

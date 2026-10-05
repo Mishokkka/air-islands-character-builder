@@ -84,8 +84,7 @@ assert.match(foundryCore, /POST_CREATION_CODES/u, "Foundry runtime core долж
 assert.match(foundryMortarCore, /from "\.\/core-base\.mjs"/u, "Сгенерированный Mortar rule engine должен использовать Foundry core-base");
 assert.match(foundryMortarCore, /safeActorConversionCharacter/u);
 assert.doesNotMatch(mortarCore, /character\.characterId \?\? "draft"/u);
-assert.match(mortarCore, /const ui = key \? currentUiState\(\) : null/u);
-assert.match(mortarCore, /!globalThis\.AIR_ISLANDS_CONFIG/u);
+assert.doesNotMatch(mortarCore, /AIR_ISLANDS_MORTAR_UI_STATE|currentUiState|globalThis\.document/u, "Shared rule code must be independent of browser UI state");
 assert.match(mortarMigration, /!stored\.enabledKin\.length/u);
 assert.match(mortarPostImport, /new Roll\("1d2"\)/u);
 assert.match(mortarPostImport, /new Roll\("1d100"\)/u);

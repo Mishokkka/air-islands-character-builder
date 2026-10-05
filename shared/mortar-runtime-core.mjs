@@ -14,19 +14,13 @@ function isMortarCharacter(character) {
 
 function clearBuilderPostCreationRolls(character) {
   if (!isMortarCharacter(character)) return character;
+  character = cloneValue(character);
   character.creation ??= {};
   character.creation.mortar ??= {};
   character.creation.mortar.killerRoll = null;
   character.creation.mortar.defectRoll = null;
   if (Array.isArray(character.reputation?.entries)) {
     character.reputation.entries = character.reputation.entries.filter(entry => entry?.id !== "mortar-killer");
-  }
-  const ui = globalThis.AIR_ISLANDS_MORTAR_UI_STATE;
-  const characterId = String(character.characterId ?? "").trim();
-  if (ui && (!ui.characterId || ui.characterId === characterId)) {
-    ui.characterId = characterId || ui.characterId;
-    ui.killerRoll = null;
-    ui.defectRoll = null;
   }
   return character;
 }
@@ -50,11 +44,6 @@ function patchMortarReplay(replay, character) {
   replay.mortar.attributeMaximum = maximum;
   if (replay.categoryRules) replay.categoryRules.attributePoints = replay.mortar.attributePointsTotal;
 
-  const ui = globalThis.AIR_ISLANDS_MORTAR_UI_STATE;
-  const characterId = String(character?.characterId ?? "").trim();
-  if (ui?.derived && (!ui.characterId || ui.characterId === characterId)) {
-    ui.derived.attributeMaximum = maximum;
-  }
   return replay;
 }
 
@@ -79,12 +68,12 @@ function patchMortarValidation(validation, character, rules) {
 
 export function attributeMaximum(attribute, character, rules) {
   if (!isMortarCharacter(character)) return mortar.attributeMaximum(attribute, character, rules);
-  clearBuilderPostCreationRolls(character);
+  character = clearBuilderPostCreationRolls(character);
   return patchMortarReplay(mortar.replayCharacter(character, rules), character).mortar.attributeMaximum;
 }
 
 export function replayCharacter(character, rules) {
-  clearBuilderPostCreationRolls(character);
+  character = clearBuilderPostCreationRolls(character);
   return isMortarCharacter(character)
     ? patchMortarReplay(mortar.replayCharacter(character, rules), character)
     : mortar.replayCharacter(character, rules);
@@ -92,12 +81,13 @@ export function replayCharacter(character, rules) {
 
 export function validateCharacter(character, rules) {
   if (!isMortarCharacter(character)) return mortar.validateCharacter(character, rules);
-  clearBuilderPostCreationRolls(character);
+  character = clearBuilderPostCreationRolls(character);
   const validation = stripPostCreationValidation(mortar.validateCharacter(character, rules));
   return patchMortarValidation(validation, character, rules);
 }
 
 export function simulateXpTransaction(character, rules, transaction) {
+  character = clearBuilderPostCreationRolls(character);
   const result = mortar.simulateXpTransaction(character, rules, transaction);
   if (isMortarCharacter(character) && result?.replay) patchMortarReplay(result.replay, character);
   return result;
@@ -105,7 +95,7 @@ export function simulateXpTransaction(character, rules, transaction) {
 
 export function characterToActorData(character, rules, options = {}) {
   if (!isMortarCharacter(character)) return mortar.characterToActorData(character, rules, options);
-  clearBuilderPostCreationRolls(character);
+  character = clearBuilderPostCreationRolls(character);
   const validation = validateCharacter(character, rules);
   if (!validation.valid && options.allowInvalid !== true) {
     throw new mortar.RuleError("INVALID_CHARACTER", "Нельзя создать Actor из невалидного файла персонажа.");

@@ -1,6 +1,4 @@
-<!doctype html>
-<html lang="ru">
-<head>
+<!DOCTYPE html><html lang="ru"><head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Конструктор персонажа Воздушных Островов</title>
@@ -8,23 +6,17 @@
 </head>
 <body>
   <header class="app-header">
-    <div>
-      <h1>Конструктор персонажа</h1>
-      <p>Forbidden Lands · Воздушные Острова</p>
-    </div>
-    <div class="header-tools">
-      <div class="header-actions">
-        <button id="saveDraft" type="button">Сохранить черновик</button>
-        <label class="file-button">Открыть .flchar<input id="loadDraft" type="file" accept=".flchar,.json,application/json,application/zip"></label>
-        <button id="resetDraft" type="button">Сбросить</button>
-        <button id="exportCharacter" class="primary" type="button">Экспорт .flchar</button>
-      </div>
-    </div>
+    <div class="brand"><span class="brand-compass" aria-hidden="true">✧</span><div><h1>Воздушные Острова</h1><p>Досье пилигрима · 2.0</p></div></div>
+    <div class="header-tools"><span id="saveStatus" role="status">Загрузка черновика…</span><div class="header-actions">
+      <button id="undoEdit" type="button" title="Отменить изменение" aria-label="Отменить изменение">↶</button><button id="redoEdit" type="button" title="Повторить изменение" aria-label="Повторить изменение">↷</button>
+      <details class="file-menu"><summary>Файл</summary><div class="file-menu-content"><button id="saveDraft" type="button">Скачать черновик</button><label class="file-button">Открыть персонажа<input id="loadDraft" type="file" accept=".flchar,.json,application/json,application/zip"></label><button id="resetDraft" type="button">Новый персонаж</button></div></details>
+      <button id="exportCharacter" class="primary" type="button">Скачать .flchar</button>
+    </div></div>
   </header>
-
-
+  <div class="notice-wrap"><p id="editorNotice" role="status" hidden=""></p><button id="dismissNotice" aria-label="Закрыть сообщение" type="button">×</button></div>
   <div class="app-shell">
     <aside class="wizard-sidebar" aria-label="Этапы создания персонажа">
+      <div class="character-mini"><span id="characterInitial" aria-hidden="true">?</span><strong id="characterName">Новый персонаж</strong><small id="characterMeta"></small></div>
       <nav id="wizardSteps" class="wizard-steps"></nav>
       <section class="resource-card">
         <h2>Состояние</h2>
@@ -33,21 +25,22 @@
     </aside>
 
     <main class="layout" id="wizardContent">
+      <div class="workspace-heading"><label class="mobile-step">Раздел персонажа<select id="mobileStep"></select></label><span class="eyebrow" id="pageEyebrow">Досье пилигрима</span><h2 id="pageTitle">Основа</h2><div id="activeResources" aria-live="polite"></div></div>
       <section class="panel" id="identityPanel" data-step="identity">
         <h2>Основа</h2>
         <div class="form-grid">
           <label class="wide">Имя<input id="name" type="text" autocomplete="off"></label>
           <label>Раса<select id="kin"></select></label>
           <label id="kinVariantWrap">Вариант<select id="kinVariant"></select></label>
-          <label id="kinFocusWrap" hidden>Фокус гвирла<select id="kinFocus"></select></label>
+          <label id="kinFocusWrap" hidden="">Фокус гвирла<select id="kinFocus"></select></label>
           <label>Профессия<select id="profession"></select></label>
-          <label>Происхождение<select id="origin"></select></label>
-          <label>Вера<select id="religion"></select></label>
-          <label>Гражданство<input id="citizenship" type="text" autocomplete="off" placeholder="Если отличается от места рождения"></label>
-          <label>Уточнение веры<input id="religionDetail" type="text" autocomplete="off" placeholder="Течение, местный культ, личное отношение"></label>
-          <label class="wide">Конкретное место происхождения<input id="originDetail" type="text" autocomplete="off" placeholder="Город, деревня, остров, район или община"></label>
+
+
+
+
+
           <div class="birth-date-row wide" role="group" aria-label="Дата рождения">
-            <label>Год рождения<input id="birthYear" type="number" step="1"></label>
+            <label><span id="birthYearLabel">Год рождения</span><input id="birthYear" type="number" step="1"></label>
             <label>Трилуние<select id="birthMonth"></select></label>
             <label>День<input id="birthDay" type="number" min="1" max="30" step="1"></label>
           </div>
@@ -55,16 +48,18 @@
         </div>
         <div id="baseXpAllowance" class="summary-line"></div>
         <div id="ageSummary" class="summary-line"></div>
-        <div id="identityLore" class="lore-grid" aria-live="polite"></div>
-      </section>
+        <p id="mortarFoundryNote" class="panel-help" hidden="">После импорта в Foundry выполняются обязательные D2 для Reputation «Убийца» и D100 по таблице дефектов. Результаты не выбираются в билдере.</p>
+
+      <details class="origin-details" id="originDetails"><summary>Происхождение, вера и гражданство</summary><div class="form-grid"><label>Происхождение<select id="origin"></select></label><label class="">Конкретное место происхождения<input id="originDetail" type="text" autocomplete="off" placeholder="Город, деревня, остров, район или община"></label><label>Вера<select id="religion"></select></label><label>Уточнение веры<input id="religionDetail" type="text" autocomplete="off" placeholder="Течение, местный культ, личное отношение"></label><label>Гражданство<input id="citizenship" type="text" autocomplete="off" placeholder="Если отличается от места рождения"></label></div><div id="identityLore" class="lore-grid" aria-live="polite"></div></details></section>
 
       <section class="panel" id="assetsPanel" data-step="identity">
         <h2>Изображения</h2>
-        <p class="panel-help">Портрет используется в листе Actor. Токен используется на сцене. Допустимы PNG, WebP и JPEG до 12 МБ.</p>
-        <div class="asset-grid">
+
+
+      <details id="assetDetails"><summary>Портрет и токен</summary><p class="panel-help">Портрет используется в листе Actor. Токен используется на сцене. Допустимы PNG, WebP и JPEG до 12 МБ.</p><div class="asset-grid">
           <article class="asset-card">
             <h3>Портрет</h3>
-            <div class="asset-preview portrait-preview"><img id="portraitPreview" alt="Предпросмотр портрета" hidden><span id="portraitEmpty">Не выбран</span></div>
+            <div class="asset-preview portrait-preview"><img id="portraitPreview" alt="Предпросмотр портрета" hidden=""><span id="portraitEmpty">Не выбран</span></div>
             <div id="portraitMeta" class="asset-meta"></div>
             <div class="asset-actions">
               <label class="file-button">Выбрать<input id="portraitFile" type="file" accept="image/png,image/webp,image/jpeg"></label>
@@ -73,15 +68,15 @@
           </article>
           <article class="asset-card">
             <h3>Токен</h3>
-            <div class="asset-preview token-preview"><img id="tokenPreview" alt="Предпросмотр токена" hidden><span id="tokenEmpty">Не выбран</span></div>
+            <div class="asset-preview token-preview"><img id="tokenPreview" alt="Предпросмотр токена" hidden=""><span id="tokenEmpty">Не выбран</span></div>
+            <div id="assetMeta" class="asset-meta"></div>
             <div id="tokenMeta" class="asset-meta"></div>
             <div class="asset-actions">
               <label class="file-button">Выбрать<input id="tokenFile" type="file" accept="image/png,image/webp,image/jpeg"></label>
               <button id="removeToken" type="button">Убрать</button>
             </div>
           </article>
-        </div>
-      </section>
+        </div></details></section>
 
       <section class="panel" id="attributesPanel" data-step="attributes">
         <h2>Характеристики</h2>
@@ -102,33 +97,31 @@
 
       <section class="panel" id="talentsPanel" data-step="talents">
         <h2>Таланты</h2>
-        <h3>Расовый талант</h3>
-        <div id="kinTalent" class="readonly-card"></div>
-
-        <h3>Первый Professional Path</h3>
-        <label>Бесплатный Path Rank 1<select id="initialPath"></select></label>
-
-        <h3>Возрастные очки талантов</h3>
-        <div id="ageTalentSummary" class="summary-line"></div>
-        <div id="ageTalentLedger" class="selection-list"></div>
-        <button id="undoAgeTalent" type="button">Отменить последнюю возрастную покупку</button>
-
-        <h3>Professional Path</h3>
-        <p class="panel-help">При создании доступен только один Path выбранной профессии. Его можно повышать возрастными очками и Base XP.</p>
-        <div id="paths" class="selection-list"></div>
-
-        <h3>Все General Talents</h3>
-        <p class="panel-help">Наведите на название, чтобы прочитать полное описание всех рангов. Нажмите «+», чтобы выбрать источник покупки.</p>
+        <details id="foundationDetails" data-organic-talents="" class="talent-foundation" open="">
+          <summary>Расовый талант и профессиональный путь</summary>
+          <div class="foundation-cards">
+            <section class="foundation-card"><h3>Расовый талант</h3><div id="kinTalent" class="readonly-card"></div></section>
+            <section class="foundation-card"><h3>Профессиональный путь</h3><label>Первый ранг бесплатно<select id="initialPath"></select></label><div id="paths" class="selection-list"></div></section>
+          </div>
+        </details>
+        <details class="age-purchases" data-organic-talents=""><summary>Журнал возрастных покупок</summary><div id="ageTalentSummary" class="summary-line"></div><div id="ageTalentLedger" class="selection-list"></div><button id="undoAgeTalent" type="button">Отменить последнюю возрастную покупку</button></details>
+        <section id="mortarSystems" hidden=""></section>
+        <div class="catalog-heading"><h3>Общие таланты</h3><span id="talentCount"></span></div>
+        <div class="catalog-toolbar"><label class="catalog-search">Поиск<input id="talentSearch" type="search" placeholder="Название таланта…" autocomplete="off"></label><label>Показать<select id="talentFilter"><option value="all">Все таланты</option><option value="available">Доступные сейчас</option><option value="selected">Выбранные</option></select></label></div>
+        <p class="panel-help">Наведите на название для быстрой справки. Нажмите на название, чтобы закрепить описание, или «+», чтобы выбрать источник покупки.</p>
         <div id="generalTalentCatalog" class="catalog-grid catalog-grid-three" aria-label="Каталог общих талантов"></div>
 
-        <h3>Выбранные General Talents</h3>
-        <div id="generalTalents" class="selection-list"></div>
+        <p id="talentEmpty" class="empty-catalog" hidden="">Ничего не найдено. Измените поиск или фильтр.</p>
+        <details class="selected-talents" open=""><summary>Выбранные общие таланты</summary>
+        <div id="generalTalents" class="selection-list"></div></details>
       </section>
 
       <section class="panel" id="spellsPanel" data-step="spells">
         <h2>Заклинания</h2>
         <div id="spellSummary" class="summary-line"></div>
         <p class="panel-help">Заклинания сгруппированы по рангу и доступной школе. Наведите на название для полного описания. Бесплатно при создании можно выбрать до пяти заклинаний Rank 1 и до четырёх Rank 2. С учётом покупок за Base XP общий лимит остаётся пять заклинаний каждого ранга.</p>
+        <div class="catalog-toolbar"><label class="catalog-search">Поиск<input id="spellSearch" type="search" placeholder="Название или школа…"></label><label>Ранг<select id="spellRank"><option value="">Все ранги</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select></label><label>Показать<select id="spellFilter"><option value="all">Все</option><option value="selected">Выбранные</option></select></label></div>
+        <p id="spellEmpty" class="empty-catalog" hidden="">Заклинания не найдены. Измените поиск или фильтр.</p>
         <div id="spellCatalog" class="spell-catalog" aria-label="Каталог доступных заклинаний"></div>
         <h3>Выбранные заклинания</h3>
         <div id="spells" class="selection-list"></div>
@@ -150,10 +143,10 @@
       <section class="panel" id="progressPanel" data-step="languages">
         <h2>Репутация и развитие</h2>
         <div class="form-grid">
-          <label>Итоговая Reputation<input id="reputationTotal" type="number" readonly></label>
-          <label>Доступно на развитие (20%)<input id="xpBudget" type="number" readonly></label>
-          <label>Потрачено XP<input id="spentXp" type="number" readonly></label>
-          <label>Остаток XP<input id="remainingXp" type="number" readonly></label>
+          <label>Итоговая Reputation<input id="reputationTotal" type="number" readonly=""></label>
+          <label>Доступно на развитие (20%)<input id="xpBudget" type="number" readonly=""></label>
+          <label>Потрачено XP<input id="spentXp" type="number" readonly=""></label>
+          <label>Остаток XP<input id="remainingXp" type="number" readonly=""></label>
         </div>
         <div class="xp-actions">
           <button id="buyReputation" type="button">Купить +1 Reputation</button>
@@ -198,7 +191,7 @@
             <label>Гордость<textarea id="bioPride" rows="4"></textarea></label>
             <label>Тёмный секрет<textarea id="bioDarkSecret" rows="4"></textarea></label>
             <label class="wide">Связь с группой<textarea id="bioConnections" rows="5"></textarea></label>
-            <label class="wide">Note<span class="field-description">То, что о вас наверняка знают товарищи и знакомые — суть, внешность, ощущение, речь, повадки и проч.</span><textarea id="bioPublicNote" rows="5"></textarea></label>
+            <label class="wide">Что о вас знают окружающие<span class="field-description">То, что о вас наверняка знают товарищи и знакомые — суть, внешность, ощущение, речь, повадки и проч.</span><textarea id="bioPublicNote" rows="5"></textarea></label>
           </div>
         </section>
 
@@ -259,12 +252,18 @@
     </main>
   </div>
 
-  <div id="catalogTooltip" class="catalog-tooltip" role="tooltip" tabindex="0" aria-label="Описание таланта или заклинания" hidden></div>
-  <div id="purchaseMenu" class="purchase-menu" hidden></div>
+  <div id="catalogTooltip" class="catalog-tooltip" role="tooltip" tabindex="0" aria-label="Описание таланта или заклинания" hidden=""></div>
+  <div id="purchaseMenu" class="purchase-menu" hidden=""></div>
   <script src="config.js"></script>
 
   <script src="core.bundle.js"></script>
   <script src="zip.bundle.js"></script>
+  <div id="detailBackdrop" class="detail-backdrop" hidden=""></div>
+  <aside id="catalogDetail" class="catalog-detail" role="dialog" aria-modal="true" aria-labelledby="detailName" hidden=""><header><span class="eyebrow" id="detailMeta"></span><button id="closeDetail" type="button" aria-label="Закрыть описание">×</button><h2 id="detailName"></h2></header><div id="detailDescription" tabindex="0"></div><footer><p id="detailReason"></p><div id="detailActions"></div></footer></aside>
+  <dialog id="editorDialog" aria-labelledby="dialogTitle"><h2 id="dialogTitle"></h2><div id="dialogBody"></div><footer><button type="button" id="dialogCancel">Сохранить прежнее</button><button type="button" id="dialogAccept" class="primary">Применить изменение</button></footer></dialog>
+  <script src="editor-ui.js"></script>
+  <script src="mortar-view.js"></script>
   <script src="app.js"></script>
-</body>
-</html>
+
+
+</body></html>

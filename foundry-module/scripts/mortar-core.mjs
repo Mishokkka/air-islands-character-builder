@@ -1,5 +1,5 @@
-import * as base from "./core.mjs";
-export * from "./core.mjs";
+import * as base from "./core-base.mjs";
+export * from "./core-base.mjs";
 
 const ATTRIBUTES = ["strength", "agility", "wits", "empathy"];
 const MODULE_ID = "air-islands-character-importer";

@@ -44,6 +44,8 @@ try {
       window.confirm = () => true;
       window.URL.createObjectURL = () => "blob:test";
       window.URL.revokeObjectURL = () => undefined;
+      window.HTMLDialogElement.prototype.showModal = function () { this.open = true; setTimeout(() => window.document.querySelector('#dialogAccept')?.click(), 0); };
+      window.HTMLDialogElement.prototype.close = function () { this.open = false; };
     }
   });
   await new Promise(resolve => dom.window.addEventListener("load", () => setTimeout(resolve, 250), { once: true }));
@@ -56,13 +58,14 @@ try {
   if (dom.window.document.querySelectorAll("#wizardSteps .wizard-step").length !== 8) {
     throw new Error("Последовательный мастер не создал восемь этапов.");
   }
-  const headerControls = dom.window.document.querySelectorAll(".app-header .header-actions > button, .app-header .header-actions > .file-button");
-  if (headerControls.length !== 4
+  if (!dom.window.document.querySelector(".file-menu #saveDraft")
+    || !dom.window.document.querySelector("#undoEdit")
+    || !dom.window.document.querySelector("#redoEdit")
     || !dom.window.document.querySelector("#saveDraft")
     || !dom.window.document.querySelector("#loadDraft")
     || !dom.window.document.querySelector("#resetDraft")
     || !dom.window.document.querySelector("#exportCharacter")) {
-    throw new Error("В шапке должны остаться только сохранение, открытие .flchar, сброс и экспорт.");
+    throw new Error("Шапка 2.0 должна содержать меню файлов, историю изменений и экспорт.");
   }
   if (dom.window.document.querySelector(".rules-runtime, #rulesStatus, #checkRulesUpdate, #restorePreviousRules, #loadRulesPackage")) {
     throw new Error("Игрокам всё ещё показаны служебные элементы управления пакетами правил.");

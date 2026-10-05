@@ -1,4 +1,4 @@
-const CACHE_NAME = "air-islands-character-builder-1.5.1";
+const CACHE_NAME = "air-islands-character-builder-2.0.0";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -7,13 +7,17 @@ const APP_SHELL = [
   "./core.bundle.js",
   "./zip.bundle.js",
   "./app.js",
-  "./mortar-ui.js",
-  "./mortar-v2-ui.js"
+  "./editor-ui.js",
+  "./mortar-view.js"
 ];
 const NETWORK_FIRST_SHELL = /\.(?:html|css|js)$/iu;
 
 self.addEventListener("install", event => {
-  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL)).then(() => self.skipWaiting()));
+  event.waitUntil(caches.open(CACHE_NAME).then(async cache => {
+    await cache.addAll(APP_SHELL);
+    // Only the standalone distribution contains an embedded rules bundle.
+    try { const embedded = await fetch('./rules.bundle.js'); if (embedded.ok) await cache.put('./rules.bundle.js', embedded); } catch { /* Pages uses IndexedDB rules. */ }
+  }).then(() => self.skipWaiting()));
 });
 
 self.addEventListener("activate", event => {
@@ -27,7 +31,7 @@ self.addEventListener("activate", event => {
 function keepCacheWriteAlive(event, key, responsePromise) {
   const cacheUpdate = responsePromise
     .then(response => {
-      if (!response) return undefined;
+      if (!response?.ok) return undefined;
       const copy = response.clone();
       return caches.open(CACHE_NAME).then(cache => cache.put(key, copy));
     })
@@ -44,7 +48,10 @@ self.addEventListener("fetch", event => {
   const sameOrigin = url.origin === self.location.origin;
   const networkFirst = request.mode === "navigate" || (sameOrigin && NETWORK_FIRST_SHELL.test(url.pathname));
   if (networkFirst) {
-    const networkResponse = fetch(request);
+    const networkResponse = fetch(request).then(response => {
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return response;
+    });
     const key = request.mode === "navigate" ? "./index.html" : request;
     keepCacheWriteAlive(event, key, networkResponse);
     event.respondWith(

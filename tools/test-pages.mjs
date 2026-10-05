@@ -17,10 +17,11 @@ const rules = JSON.parse(decodeText(entries.get("rules.json")));
 if (rules.packageHash !== manifest.rulesPackageHash) throw new Error("Внутренний packageHash опубликованных правил не совпадает с манифестом.");
 const index = fs.readFileSync(path.join(pages, "index.html"), "utf8");
 if (index.includes('src="rules.bundle.js"')) throw new Error("GitHub Pages всё ещё использует встроенный rules.bundle.js.");
-for (const file of ["app.js", "mortar-ui.js", "mortar-v2-ui.js", "core.bundle.js", "zip.bundle.js", "styles.css", "config.js", "sw.js", ".nojekyll"]) {
+for (const file of ["app.js", "editor-ui.js", "mortar-view.js", "core.bundle.js", "zip.bundle.js", "styles.css", "config.js", "sw.js", ".nojekyll"]) {
   if (!fs.existsSync(path.join(pages, file))) throw new Error(`В GitHub Pages отсутствует ${file}.`);
 }
 const config = fs.readFileSync(path.join(pages, "config.js"), "utf8");
-if (!config.includes('builderVersion: "1.5.1"') && !config.includes('"builderVersion": "1.5.1"')) throw new Error("GitHub Pages объявляет неверную версию builder.");
-if (!config.includes('mortarV2Ui.src = "./mortar-v2-ui.js"')) throw new Error("GitHub Pages не загружает Mortar post-creation UI helper.");
+const version = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8")).version;
+if (!config.includes(JSON.stringify(version))) throw new Error("GitHub Pages объявляет неверную версию builder.");
+if (!index.includes('src="editor-ui.js"') || !index.includes('src="mortar-view.js"')) throw new Error("GitHub Pages не загружает компоненты редактора.");
 console.log("GitHub Pages output checks passed.");
