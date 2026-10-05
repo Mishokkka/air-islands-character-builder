@@ -71,6 +71,7 @@ try {
   const pause = (ms) => new Promise((r) => setTimeout(r, ms));
   const viewport = (width, height = 1e3) => call("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 1, mobile: width < 800 });
   const shot = async (name) => {
+    await pause(180);
     const result = await call("Page.captureScreenshot", { format: "png" });
     fs.writeFileSync(path.join(output, name + ".png"), Buffer.from(result.data, "base64"));
   };
@@ -104,6 +105,16 @@ try {
   const columns = await evaluate('getComputedStyle(document.querySelector("#generalTalentCatalog")).gridTemplateColumns.split(" ").length');
   assert.equal(columns, 3);
   await shot("talents-desktop");
+  assert.equal(await evaluate(`(()=>{const button=document.querySelector('#paths .catalog-hover');return button.getBoundingClientRect().width>0})()`),true,'Selected path description must be visible');
+  await evaluate('document.querySelector("#paths .catalog-hover").click()');
+  assert.equal(await evaluate('!document.querySelector("#catalogDetail").hidden && document.querySelector("#detailDescription").textContent.length>100'),true);
+  await shot('professional-path-detail');
+  await evaluate('document.querySelector("#closeDetail").click(); document.querySelector(".profession-path-options").open=true');
+  const pathBeforeReading=await evaluate('document.querySelector("#initialPath").value');
+  await evaluate('document.querySelector("#professionPathCatalog .catalog-item:not(.selected) button").click()');
+  assert.equal(await evaluate('document.querySelector("#initialPath").value'),pathBeforeReading);
+  assert.equal(await evaluate('[...document.querySelectorAll("#detailActions button")].some(b=>b.textContent==="Выбрать этот путь")'),true);
+  await evaluate('document.querySelector("#closeDetail").click(); document.querySelector(".profession-path-options").open=false');
   assert.equal(await evaluate(`(()=>{const name=document.querySelector('#generalTalentCatalog .catalog-item-name');name.dispatchEvent(new MouseEvent('mouseenter'));return !document.querySelector('#catalogTooltip').hidden&&document.querySelector('#catalogTooltip').textContent.length>100})()`), true);
   await shot("talent-tooltip");
   await evaluate('document.querySelector("#generalTalentCatalog .catalog-item-name").click()');
@@ -120,6 +131,16 @@ try {
     if (width === 390) await shot("talents-mobile");
   }
   await viewport(1440);
+  await evaluate('document.querySelector(".wizard-step[data-step=languages]").click()');
+  assert.equal(await evaluate(`(()=>{const p=document.querySelector('#reputationPanel').getBoundingClientRect(), main=document.querySelector('.layout').getBoundingClientRect();return p.width>=main.width-2})()`),true,'Reputation must use the full working width');
+  await evaluate('window.scrollBy(0,document.querySelector("#reputationPanel").getBoundingClientRect().top-110)');
+  await shot('reputation-desktop');
+  for (const width of [390,320]) {
+    await viewport(width,844);await pause(70);
+    assert.equal(await evaluate('document.documentElement.scrollWidth<=innerWidth'),true,`Reputation overflow at ${width}`);
+    if(width===390){await evaluate('window.scrollBy(0,document.querySelector("#reputationPanel").getBoundingClientRect().top-16)');await shot('reputation-mobile');}
+  }
+  await viewport(1440);
   await evaluate(`document.querySelector('.wizard-step[data-step=identity]').click();document.querySelector('#kin').value='mortar';document.querySelector('#kin').dispatchEvent(new Event('change',{bubbles:true}));`);
   await pause(80);
   if (await evaluate('document.querySelector("#editorDialog").open')) await evaluate('document.querySelector("#dialogAccept").click()');
@@ -131,6 +152,13 @@ try {
   await evaluate('document.querySelector(".wizard-step[data-step=talents]").click()');
   await pause(70);
   await shot("mortar-desktop");
+  for (const width of [1440,1024,768,390,320]) {
+    await viewport(width,1000);await pause(70);
+    assert.equal(await evaluate('document.documentElement.scrollWidth<=innerWidth'),true,`Mortar overflow at ${width}`);
+    assert.equal(await evaluate(`(()=>[...document.querySelectorAll('.protocol-card')].every(card=>{const name=card.querySelector('.catalog-item-name').getBoundingClientRect(),rank=card.querySelector('.protocol-rank').getBoundingClientRect(),cost=card.querySelector('.catalog-cost').getBoundingClientRect(),actions=card.querySelector('.catalog-actions').getBoundingClientRect();return card.scrollWidth<=card.clientWidth+1 && name.right<=rank.left && cost.right<=actions.left}))()`),true,`Mortar card content overlaps at ${width}`);
+    if(width===390)await shot('mortar-mobile');
+  }
+  await viewport(1440);
   await call("Page.navigate", { url: base + "/dist/pages/index.html" });
   await pause(1200);
   await evaluate("navigator.serviceWorker.ready");

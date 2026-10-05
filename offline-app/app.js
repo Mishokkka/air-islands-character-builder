@@ -78,7 +78,7 @@
     "name", "kin", "kinVariant", "kinVariantWrap", "kinFocus", "kinFocusWrap", "profession", "origin", "religion",
     "originDetail", "citizenship", "religionDetail", "birthYear", "birthMonth", "birthDay", "ageSummary", "attributeSummary", "attributes", "skillSummary",
     "skillsBody", "kinTalent", "initialPath", "ageTalentSummary", "ageTalentLedger", "undoAgeTalent", "paths",
-    "generalTalentCatalog", "generalTalents", "spellSummary", "spellCatalog", "spells", "catalogTooltip", "purchaseMenu",
+    "generalTalentCatalog", "generalTalents", "professionPathCatalog", "spellSummary", "spellCatalog", "spells", "catalogTooltip", "purchaseMenu",
     "languageSummary", "languageSelect", "languageLevel", "languageLore", "identityLore",
     "languageNative", "addLanguage", "languages", "reputationTotal", "baseXp", "baseXpAllowance", "xpBudget", "spentXp", "remainingXp",
     "buyReputation", "undoReputation", "undoXp", "xpLedger", "reputationEntries", "addReputationEntry", "bioConcept", "bioAppearance", "bioBackground",
@@ -177,6 +177,13 @@
     const xp = core.simulateXpTransaction(state, rules, tx);
     const position = lastXpTransactionIndex(t => t.type === 'talent' && t.catalogId === catalogId);
     const actions = [];
+    const canChoosePath = talent.type === 'profession' && state.identity.kinId !== 'mortar'
+      && availableProfessionPaths(state.identity.professionId).includes(catalogId)
+      && state.creation.initialPathCatalogId !== catalogId;
+    if (canChoosePath) actions.push({
+      label:'Выбрать этот путь', primary:true,
+      run:()=>changeFoundation(()=>state.creation.initialPathCatalogId=catalogId,'смены пути')
+    });
     if (rank < (talent.maximumRank ?? 5)) {
       if (age.valid) actions.push({label:`За ${age.record.cost} возрастных очк.`,run:()=>addAgeTalent(catalogId)});
       if (xp.valid) actions.push({label:xp.cost ? `Ранг ${rank+1} · ${xp.cost} XP` : 'Получить ранг 1 бесплатно',primary:true,run:()=>addXpTalent(catalogId)});
@@ -190,7 +197,7 @@
     }});
     return { name:talent.name, meta:`${talent.type === 'profession' ? 'Профессиональный путь' : talent.builderRole ? 'Система мортара' : 'Талант'} · ранг ${rank} / ${talent.maximumRank ?? 5}`,
       description:sanitizeCatalogHtml(catalogDescription(talent)) || '<p>Описание отсутствует.</p>',actions,
-      reason:rank >= (talent.maximumRank ?? 5) ? 'Максимальный ранг.' : xp.valid ? `После покупки останется ${replay.final.xpRemaining-xp.cost} XP.` : xp.issue?.message || age.issue?.message || '' };
+      reason:canChoosePath ? 'Первый ранг бесплатно. Перед сменой пути редактор покажет, какие зависимые покупки придётся отменить.' : rank >= (talent.maximumRank ?? 5) ? 'Максимальный ранг.' : xp.valid ? `После покупки останется ${replay.final.xpRemaining-xp.cost} XP.` : xp.issue?.message || age.issue?.message || '' };
   }
 
   function spellDetail(catalogId) {
@@ -1531,6 +1538,16 @@
     const allowedIds = availableProfessionPaths(state.identity.professionId);
     setOptions(el.initialPath, allowedIds.map(id => [id, index.talents.get(id)?.name ?? id]));
     el.initialPath.value = state.creation.initialPathCatalogId;
+    el.professionPathCatalog.replaceChildren(...allowedIds.map(catalogId => {
+      const talent = index.talents.get(catalogId);
+      const selected = catalogId === state.creation.initialPathCatalogId;
+      const tile = document.createElement('div');
+      tile.className = 'catalog-item profession-path-card' + (selected ? ' selected' : '');
+      tile.dataset.catalogId = catalogId;
+      tile.innerHTML = `<button type="button" class="catalog-item-name">${escapeHtml(talent?.name ?? catalogId)}</button><small class="catalog-cost">${selected ? 'Выбранный путь' : talent?.magical ? 'Магический путь · читать' : 'Читать описание и ранги'}</small>`;
+      attachCatalogTooltip(tile.querySelector('button'), talent, 'Профессиональный путь');
+      return tile;
+    }));
 
     el.ageTalentSummary.textContent = `Потрачено ${replay.ageTalents.spent} из ${replay.ageTalents.total}. Магический Path стоит 2 очка за ранг, остальные покупки — 1.`;
     el.ageTalentSummary.classList.toggle("error", replay.ageTalents.spent !== replay.ageTalents.total);
@@ -1552,7 +1569,7 @@
       const xpSimulation = rank < 5 ? core.simulateXpTransaction(state, rules, xpTx) : { valid: false };
       const xpUndoPosition = lastXpTransactionIndex(tx => tx.type === "talent" && tx.catalogId === pathCatalogId);
       const xpUndoResult = xpUndoPosition >= 0 ? xpTransactionResult(replay, xpUndoPosition) : null;
-      row.innerHTML = `<span class="catalog-hover" tabindex="0">${escapeHtml(pathTalent.name)} · первый Path${pathTalent.magical ? " · магический" : ""}</span><strong>Rank ${rank}</strong><span class="row-actions"><button type="button" data-age ${!ageSimulation.valid ? "disabled" : ""}>${ageSimulation.valid ? `+ за ${ageSimulation.record.cost} возраст.` : "+ возраст"}</button><button type="button" data-undo-xp class="xp-undo" ${xpUndoPosition < 0 ? "disabled" : ""}>${xpUndoResult ? `−1 · вернуть ${xpUndoResult.cost} XP` : "− XP"}</button><button type="button" data-xp ${!xpSimulation.valid ? "disabled" : ""}>${xpSimulation.valid ? `+1 за ${xpSimulation.cost} XP` : "+ XP"}</button></span>`;
+      row.innerHTML = `<button type="button" class="catalog-hover catalog-item-name">Описание пути${pathTalent.magical ? " · магический" : ""} ↗</button><strong>Ранг ${rank}</strong><span class="row-actions"><button type="button" data-age ${!ageSimulation.valid ? "disabled" : ""}>${ageSimulation.valid ? `+ за ${ageSimulation.record.cost} возраст.` : "+ возраст"}</button><button type="button" data-undo-xp class="xp-undo" ${xpUndoPosition < 0 ? "disabled" : ""}>${xpUndoResult ? `−1 · вернуть ${xpUndoResult.cost} XP` : "− XP"}</button><button type="button" data-xp ${!xpSimulation.valid ? "disabled" : ""}>${xpSimulation.valid ? `+1 за ${xpSimulation.cost} XP` : "+ XP"}</button></span>`;
       const ageButton = row.querySelector("[data-age]");
       const xpUndoButton = row.querySelector("[data-undo-xp]");
       const xpButton = row.querySelector("[data-xp]");

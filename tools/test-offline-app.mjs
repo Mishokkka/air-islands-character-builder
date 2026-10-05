@@ -139,7 +139,7 @@ try {
   }
 
   for (let i = 0; i < 2; i += 1) {
-    const initialPathRow = [...dom.window.document.querySelectorAll("#paths .talent-row")].find(row => row.textContent.includes("первый Path"));
+    const initialPathRow = dom.window.document.querySelector("#paths .talent-row");
     const ageButton = initialPathRow?.querySelector("[data-age]");
     if (!ageButton) throw new Error("Не найдена кнопка возрастного повышения первого Path.");
     ageButton.click();

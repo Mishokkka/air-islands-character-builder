@@ -457,6 +457,7 @@ details[open] > summary {
 .panel[data-step=skills],
 .panel[data-step=talents],
 .panel[data-step=spells],
+.panel[data-step=languages],
 .panel[data-step=biography],
 .panel[data-step=review] {
   grid-column: 1/-1;
@@ -1960,7 +1961,10 @@ td input {
   font-size: .75rem;
 }
 .foundation-card .talent-row > .catalog-hover {
-  display: none;
+  display: inline-block;
+  flex-basis: 100%;
+  margin-bottom: 4px;
+  color: var(--accent);
 }
 .foundation-card .row-actions {
   flex-wrap: wrap;
@@ -2012,6 +2016,143 @@ td input {
   font-size: .8rem;
   color: var(--accent);
   margin-bottom: 12px;
+}
+.profession-path-options {
+  margin-top: 14px;
+  font-size: .8rem;
+}
+.profession-path-options > summary {
+  color: var(--accent);
+}
+.profession-path-card {
+  grid-template-columns: minmax(0, 1fr);
+  padding: 12px;
+}
+.profession-path-card .catalog-item-name {
+  min-height: 30px;
+}
+#languagesPanel > h2 {
+  display: block;
+}
+.reputation-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 20px;
+}
+.reputation-heading h2 {
+  font-size: 1.3rem;
+  margin: 0;
+}
+.reputation-heading label {
+  width: 110px;
+  flex: none;
+  font-size: .75rem;
+}
+.reputation-heading input {
+  text-align: center;
+  font-size: 1.4rem;
+  color: var(--accent);
+}
+.xp-history > summary {
+  color: var(--accent);
+}
+.xp-summary {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 20px;
+}
+.mortar-core {
+  grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr);
+  gap: 10px;
+  align-items: stretch;
+}
+.mortar-core > * {
+  min-width: 0;
+}
+.system-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  padding: 14px;
+}
+.system-card p {
+  margin: 0;
+}
+.system-label {
+  color: var(--muted);
+  font-size: .66rem;
+}
+.system-card .catalog-item-name {
+  color: var(--accent);
+  font-size: .9rem;
+}
+.protocol-card {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 14px;
+  height: 100%;
+  padding: 12px;
+  box-sizing: border-box;
+}
+.protocol-heading,
+.protocol-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.protocol-heading {
+  align-items: start;
+}
+.protocol-heading .catalog-item-name {
+  min-width: 0;
+  overflow-wrap: normal;
+}
+.protocol-rank {
+  flex: none;
+  color: var(--muted);
+  font-size: .67rem;
+  white-space: nowrap;
+  line-height: 1.6;
+}
+.selected .protocol-rank {
+  color: var(--ok);
+}
+.protocol-footer .catalog-cost {
+  min-width: 0;
+  font-size: .72rem;
+  margin: 0;
+}
+.protocol-footer .catalog-actions {
+  flex: none;
+}
+.protocol-footer .catalog-add {
+  width: 32px;
+  min-height: 32px;
+}
+#mortarRecoveryCard > .protocol-card {
+  padding: 14px;
+}
+.recovery-track > span {
+  min-width: 0;
+}
+.recovery-track [aria-current=step] {
+  box-shadow: inset 0 -2px var(--accent);
+}
+@media(max-width:720px) {
+  .mortar-core { grid-template-columns: minmax(0, 1fr); }
+  .mortar-heading { flex-wrap: wrap; gap: 8px; }
+  .protocol-footer .catalog-add { width: 40px; min-height: 40px; }
+  .reputation-heading { gap: 10px; }
+  .reputation-heading label { width: 95px; }
+}
+@media(max-width:460px) {
+  .recovery-track { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .recovery-track small { font-size: .65rem; }
+  .xp-summary { grid-template-columns: minmax(0, 1fr); }
 }
 .foundation-cards {
   display: grid;
